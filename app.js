@@ -1,21 +1,23 @@
 import { createStore } from './store.js';
 
 const $ = s => document.querySelector(s);
-const money = n => new Intl.NumberFormat('es-PE', {
-  style: 'currency',
-  currency: 'PEN'
-}).format(Number(n || 0));
 
-const esc = v => String(v ?? '').replace(
-  /[&<>'"]/g,
-  c => ({
+const money = n =>
+  new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN'
+  }).format(Number(n || 0));
+
+const esc = v =>
+  String(v ?? '').replace(/[&<>'"]/g, c => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     "'": '&#39;',
     '"': '&quot;'
-  }[c])
-);
+  }[c]));
+
+const priority = ['admin', 'manager', 'cashier', 'kitchen'];
 
 const labels = {
   new: 'NUEVO',
@@ -55,12 +57,7 @@ const total = () =>
   );
 
 const today = d =>
-  new Date(d).toLocaleDateString('en-CA', {
-    timeZone: 'America/Lima'
-  }) ===
-  new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/Lima'
-  });
+  new Date(d).toDateString() === new Date().toDateString();
 
 const cashier = () =>
   ['admin', 'manager', 'cashier'].includes(role);
@@ -75,10 +72,9 @@ function toast(message) {
   t.textContent = message;
   t.classList.add('show');
 
-  setTimeout(
-    () => t.classList.remove('show'),
-    3000
-  );
+  setTimeout(() => {
+    t.classList.remove('show');
+  }, 3000);
 }
 
 const categoryCode = p =>
@@ -94,7 +90,6 @@ const categoryName = p =>
 
 function renderCatalog() {
   const search = $('#product-search');
-
   if (!search) return;
 
   const q = search.value.toLowerCase().trim();
@@ -103,79 +98,67 @@ function renderCatalog() {
     { code: 'all', name: 'Todos' },
     ...categories
   ]
-    .map(
-      c => `
-        <button
-          class="category ${category === c.code ? 'is-selected' : ''}"
-          data-category="${esc(c.code)}">
-          ${esc(c.name)}
-        </button>
-      `
-    )
+    .map(c => `
+      <button
+        class="category ${category === c.code ? 'is-selected' : ''}"
+        data-category="${esc(c.code)}">
+        ${esc(c.name)}
+      </button>
+    `)
     .join('');
 
-  const list = products.filter(
-    p =>
-      (category === 'all' ||
-        categoryCode(p) === category) &&
-      `${p.name} ${p.description || ''} ${categoryName(p)}`
-        .toLowerCase()
-        .includes(q)
+  const list = products.filter(p =>
+    (category === 'all' || categoryCode(p) === category) &&
+    `${p.name} ${p.description || ''} ${categoryName(p)}`
+      .toLowerCase()
+      .includes(q)
   );
 
   $('#product-list').innerHTML = list.length
-    ? list
-        .map(
-          p => `
-            <article class="product">
-              <span class="product-icon">
-                ${categoryName(p) === 'Bebidas' ? '◉' : '♨'}
-              </span>
+    ? list.map(p => `
+      <article class="product">
+        <span class="product-icon">
+          ${categoryName(p) === 'Bebidas' ? '◉' : '♨'}
+        </span>
 
-              <div>
-                <strong>${esc(p.name)}</strong>
-                <small>
-                  ${esc(
-                    p.description ||
-                    categoryName(p)
-                  )}
-                </small>
-              </div>
+        <div>
+          <strong>${esc(p.name)}</strong>
+          <small>
+            ${esc(p.description || categoryName(p))}
+          </small>
+        </div>
 
-              <button
-                class="add-product"
-                data-id="${p.id}">
-                <span>${money(p.price)}</span>
-                <b>+</b>
-              </button>
-            </article>
-          `
-        )
-        .join('')
+        <button
+          class="add-product"
+          data-id="${p.id}"
+          type="button">
+
+          <span>${money(p.price)}</span>
+          <b>+</b>
+        </button>
+      </article>
+    `).join('')
     : '<p class="empty">No encontramos productos.</p>';
 }
 
 function renderPayments() {
   const select = $('#payment-method');
-
   if (!select) return;
 
   select.innerHTML = payments
-    .map(
-      p =>
-        `<option value="${esc(p.code)}">
-          ${esc(p.name)}
-        </option>`
-    )
+    .map(p => `
+      <option value="${esc(p.code)}">
+        ${esc(p.name)}
+      </option>
+    `)
     .join('');
 
   toggleCash();
 }
 
 function renderChange() {
-  const received = Number(
-    $('#cash-received')?.value || 0
-  );
+  const received =
+    Number($('#cash-received')?.value || 0);
 
   const change = received - total();
 
@@ -189,88 +172,73 @@ function renderChange() {
 }
 
 function renderCart() {
-  const count = cart.reduce(
-    (sum, x) => sum + x.quantity,
-    0
-  );
+  const count =
+    cart.reduce((sum, x) => sum + x.quantity, 0);
 
   $('#cart-count').textContent =
     `${count} ${count === 1 ? 'producto' : 'productos'}`;
 
-  $('#cart-total').textContent =
-    money(total());
+  $('#cart-total').textContent = money(total());
+  $('#dialog-total').textContent = money(total());
 
-  $('#dialog-total').textContent =
-    money(total());
+  $('#open-cart').disabled = !cart.length;
 
-  $('#open-cart').disabled =
-    !cart.length;
+  $('#cart-items').innerHTML = cart.length
+    ? cart.map(x => `
+      <div class="cart-line">
 
-  $('#cart-items').innerHTML =
-    cart.length
-      ? cart
-          .map(
-            x => `
-              <div class="cart-line">
+        <div>
+          <strong>${esc(x.name)}</strong>
+          <small>
+            ${esc(x.description || categoryName(x))}
+          </small>
+        </div>
 
-                <div>
-                  <strong>${esc(x.name)}</strong>
-                  <small>
-                    ${esc(
-                      x.description ||
-                      categoryName(x)
-                    )}
-                  </small>
-                </div>
+        <div class="quantity">
 
-                <div class="quantity">
-                  <button
-                    data-action="less"
-                    data-id="${x.id}">
-                    −
-                  </button>
+          <button
+            data-action="less"
+            data-id="${x.id}"
+            type="button">
+            −
+          </button>
 
-                  <b>${x.quantity}</b>
+          <b>${x.quantity}</b>
 
-                  <button
-                    data-action="more"
-                    data-id="${x.id}">
-                    +
-                  </button>
-                </div>
+          <button
+            data-action="more"
+            data-id="${x.id}"
+            type="button">
+            +
+          </button>
 
-                <strong>
-                  ${money(
-                    Number(x.price) *
-                    x.quantity
-                  )}
-                </strong>
+        </div>
 
-              </div>
-            `
-          )
-          .join('')
-      : '<p class="empty">Tu pedido está vacío.</p>';
+        <strong>
+          ${money(Number(x.price) * x.quantity)}
+        </strong>
+
+      </div>
+    `).join('')
+    : '<p class="empty">Tu pedido está vacío.</p>';
 
   renderChange();
 }
 
 function add(id) {
-  const p = products.find(
-    x => x.id === id
-  );
+  const product =
+    products.find(x => x.id === id);
 
-  const line = cart.find(
-    x => x.id === id
-  );
+  if (!product) return;
 
-  if (!p) return;
+  const line =
+    cart.find(x => x.id === id);
 
   if (line) {
     line.quantity++;
   } else {
     cart.push({
-      ...p,
+      ...product,
       quantity: 1
     });
   }
@@ -286,9 +254,7 @@ function card(o, forKitchen = false) {
     o.order_items || [];
 
   const time =
-    new Date(
-      o.created_at
-    ).toLocaleTimeString(
+    new Date(o.created_at).toLocaleTimeString(
       'es-PE',
       {
         hour: '2-digit',
@@ -306,47 +272,33 @@ function card(o, forKitchen = false) {
 
         <div>
           <span class="order-number">
-            #${String(
-              o.order_number
-            ).padStart(3, '0')}
+            #${String(o.order_number).padStart(3, '0')}
           </span>
 
           <small>${time}</small>
         </div>
 
-        <span
-          class="status status--${esc(
-            o.status
-          )}">
+        <span class="status status--${esc(o.status)}">
           ${esc(status)}
         </span>
 
       </div>
 
       <p class="order-lines">
-        ${lines
-          .map(
-            x =>
-              `${x.quantity}× ${esc(
-                x.product_name
-              )}`
-          )
-          .join('<br>')}
+        ${lines.map(x =>
+          `${x.quantity}× ${esc(x.product_name)}`
+        ).join('<br>')}
       </p>
 
       ${
         o.notes
-          ? `<p class="note">${esc(
-              o.notes
-            )}</p>`
+          ? `<p class="note">${esc(o.notes)}</p>`
           : ''
       }
 
       <div class="order-card__foot">
 
-        <strong>
-          ${money(o.total)}
-        </strong>
+        <strong>${money(o.total)}</strong>
 
         ${
           forKitchen && target
@@ -354,21 +306,21 @@ function card(o, forKitchen = false) {
               <button
                 class="status-button"
                 data-order="${o.id}"
-                data-next="${target}">
+                data-next="${target}"
+                type="button">
                 ${actions[target]}
               </button>
             `
             : `
               <span>
-                ${esc(
-                  payments.find(
-                    x =>
-                      x.code ===
-                      o.payment_type
-                  )?.name ||
-                    o.payment_type ||
-                    ''
-                )}
+                ${
+                  esc(
+                    payments.find(
+                      x => x.code === o.payment_type
+                    )?.name ||
+                    o.payment_type
+                  )
+                }
               </span>
             `
         }
@@ -381,134 +333,113 @@ function card(o, forKitchen = false) {
 
 function renderKitchen() {
   const active =
-    orders.filter(
-      o =>
-        ![
-          'delivered',
-          'cancelled'
-        ].includes(o.status)
+    orders.filter(o =>
+      !['delivered', 'cancelled']
+        .includes(o.status)
     );
 
   $('#kitchen-summary').innerHTML =
     ['new', 'preparing', 'ready']
-      .map(
-        s =>
-          `<span>
-            <b>
-              ${active.filter(
-                o =>
-                  o.status === s
-              ).length}
-            </b>
-            ${labels[s]}
-          </span>`
-      )
+      .map(s => `
+        <span>
+          <b>
+            ${active.filter(
+              o => o.status === s
+            ).length}
+          </b>
+          ${labels[s]}
+        </span>
+      `)
       .join('');
 
   $('#kitchen-list').innerHTML =
     active.length
-      ? active
-          .map(o => card(o, true))
-          .join('')
+      ? active.map(o => card(o, true)).join('')
       : '<p class="empty">No hay pedidos pendientes.</p>';
 }
 
 function renderHistory() {
   const visible =
-    orders.filter(
-      o =>
-        history === 'all' ||
-        (
-          history === 'pending' &&
-          ![
-            'delivered',
-            'cancelled'
-          ].includes(o.status)
-        ) ||
-        o.status === history
-    );
+    orders.filter(o => {
+
+      if (history === 'all') return true;
+
+      if (history === 'pending') {
+        return ![
+          'delivered',
+          'cancelled'
+        ].includes(o.status);
+      }
+
+      return o.status === history;
+    });
 
   $('#history-list').innerHTML =
     visible.length
-      ? visible
-          .map(o => card(o))
-          .join('')
+      ? visible.map(o => card(o)).join('')
       : '<p class="empty">No hay pedidos para mostrar.</p>';
 }
 
 function renderSales() {
   const daily =
-    orders.filter(o =>
-      today(o.created_at)
-    );
+    orders.filter(o => today(o.created_at));
 
   const done =
-    daily.filter(
-      o => o.status === 'delivered'
-    );
+    daily.filter(o => o.status === 'delivered');
 
-  const amount =
+  const totalSales =
     done.reduce(
-      (s, o) =>
-        s + Number(o.total),
+      (s, o) => s + Number(o.total),
       0
     );
 
   $('#sales-total').textContent =
-    money(amount);
+    money(totalSales);
 
   $('#sales-count').textContent =
     `${daily.length} pedidos registrados`;
 
   $('#sales-cards').innerHTML =
-    payments
-      .map(
-        p => `
-          <div>
-            <span>${esc(p.name)}</span>
-            <b>
-              ${money(
-                done
-                  .filter(
-                    o =>
-                      o.payment_type ===
-                      p.code
-                  )
-                  .reduce(
-                    (s, o) =>
-                      s +
-                      Number(o.total),
-                    0
-                  )
-              )}
-            </b>
-          </div>
-        `
-      )
-      .join('');
+    payments.map(p => {
+
+      const amount =
+        done
+          .filter(o =>
+            o.payment_type === p.code
+          )
+          .reduce(
+            (s, o) => s + Number(o.total),
+            0
+          );
+
+      return `
+        <div>
+          <span>${esc(p.name)}</span>
+          <b>${money(amount)}</b>
+        </div>
+      `;
+    }).join('');
 
   const counts = {};
 
-  done.forEach(o =>
-    (o.order_items || [])
-      .forEach(x => {
-        counts[x.product_name] =
-          (counts[x.product_name] || 0) +
-          x.quantity;
-      })
-  );
+  done.forEach(o => {
+    (o.order_items || []).forEach(x => {
+      counts[x.product_name] =
+        (counts[x.product_name] || 0) +
+        x.quantity;
+    });
+  });
 
   $('#top-products').innerHTML =
     Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
-      .map(
-        ([name, quantity]) =>
-          `<p>
-            <span>${esc(name)}</span>
-            <b>${quantity}</b>
-          </p>`
-      )
+      .map(([name, quantity]) => `
+        <p>
+          <span>${esc(name)}</span>
+          <b>${quantity}</b>
+        </p>
+      `)
       .join('') ||
     '<p class="empty">Aún no hay ventas entregadas.</p>';
 }
@@ -517,8 +448,7 @@ async function refresh() {
   if (!session) return;
 
   try {
-    orders =
-      await store.listOrders();
+    orders = await store.listOrders();
 
     renderKitchen();
     renderHistory();
@@ -532,25 +462,24 @@ async function refresh() {
 }
 
 function toggleCash() {
+  const payment =
+    $('#payment-method')?.value;
+
   const show =
-    $('#payment-method')?.value ===
-    'cash';
+    payment === 'cash' ||
+    payment === 'EFECTIVO';
 
-  $('#cash-field').hidden =
-    !show;
+  $('#cash-field').hidden = !show;
+  $('#change-row').hidden = !show;
 
-  $('#change-row').hidden =
-    !show;
+  if (!show) {
+    $('#cash-received').value = '';
+    renderChange();
+  }
 }
 
 async function place(event) {
   event.preventDefault();
-
-  if (!cart.length) {
-    return toast(
-      'Agrega al menos un producto.'
-    );
-  }
 
   const payment =
     $('#payment-method').value;
@@ -561,14 +490,15 @@ async function place(event) {
     );
 
   if (
-    payment === 'cash' &&
+    (payment === 'cash' ||
+     payment === 'EFECTIVO') &&
     received < total()
   ) {
-    return toast(
-      `Faltan ${money(
-        total() - received
-      )} para completar el pago.`
+    toast(
+      `Faltan ${money(total() - received)} para completar el pago.`
     );
+
+    return;
   }
 
   const button =
@@ -577,21 +507,24 @@ async function place(event) {
   button.disabled = true;
 
   try {
+
     const saved =
       await store.createOrder({
         items: cart,
-        paymentMethodCode: payment,
+        paymentMethodCode:
+          payment.toLowerCase() === 'efectivo'
+            ? 'cash'
+            : payment,
         notes:
           $('#order-note').value.trim(),
-        cashReceived: received
+        cashReceived:
+          received
       });
 
     cart = [];
 
     $('#cart-dialog').close();
-
     $('#cash-received').value = '';
-
     $('#order-note').value = '';
 
     renderCart();
@@ -605,9 +538,11 @@ async function place(event) {
     );
 
   } catch (error) {
+
     toast(
       `No se pudo registrar el pedido: ${error.message}`
     );
+
   } finally {
     button.disabled = false;
   }
@@ -637,136 +572,61 @@ function view(id) {
 
 function applyRole() {
   document
-    .querySelectorAll(
-      '[data-requires="cashier"]'
-    )
-    .forEach(
-      x =>
-        (x.hidden = !cashier())
+    .querySelectorAll('[data-requires="cashier"]')
+    .forEach(x =>
+      x.hidden = !cashier()
     );
 
   document
-    .querySelectorAll(
-      '[data-requires="kitchen"]'
-    )
-    .forEach(
-      x =>
-        (x.hidden = !kitchen())
+    .querySelectorAll('[data-requires="kitchen"]')
+    .forEach(x =>
+      x.hidden = !kitchen()
     );
 
   if (!cashier() && kitchen()) {
     view('kitchen-view');
-  }
-}
-
-/*
- * Entrada de la aplicación.
- *
- * No se solicita correo ni contraseña.
- * El usuario elige CAJA o COCINA.
- */
-async function enterAs(selectedRole) {
-  try {
-    $('#role-error').textContent = '';
-
-    const button =
-      selectedRole === 'cashier'
-        ? $('#enter-cashier')
-        : $('#enter-kitchen');
-
-    button.disabled = true;
-
-    await store.signInAnonymously();
-
-    const displayName =
-      selectedRole === 'cashier'
-        ? 'CAJA'
-        : 'COCINA';
-
-    await store.claimDeviceRole(
-      selectedRole,
-      displayName
-    );
-
-    session =
-      (
-        await store.getSession()
-      ).session;
-
-    await start();
-
-  } catch (error) {
-
-    console.error(error);
-
-    $('#role-error').textContent =
-      error.message ||
-      'No se pudo iniciar la aplicación.';
-
-    try {
-      await store.signOut();
-    } catch {}
-
-  } finally {
-
-    const cashierButton =
-      $('#enter-cashier');
-
-    const kitchenButton =
-      $('#enter-kitchen');
-
-    if (cashierButton)
-      cashierButton.disabled = false;
-
-    if (kitchenButton)
-      kitchenButton.disabled = false;
+  } else if (cashier()) {
+    view('order-view');
   }
 }
 
 async function start() {
-  if (!session) return;
 
-  const profile =
-    await store.getProfile(
+  const [
+    roles,
+    profile
+  ] = await Promise.all([
+    store.getRoles(),
+    store.getProfile(
       session.user.id
+    )
+  ]);
+
+  role =
+    priority.find(
+      r =>
+        roles
+          .map(x => x.role)
+          .includes(r)
     );
 
   if (
-    !profile ||
-    !profile.active
+    !profile?.active ||
+    !role
   ) {
     throw new Error(
-      'Este dispositivo no está activo.'
-    );
-  }
-
-  const roles =
-    await store.getRoles();
-
-  role =
-    roles
-      .map(x => x.role)
-      .find(
-        r =>
-          r === 'cashier' ||
-          r === 'kitchen' ||
-          r === 'admin' ||
-          r === 'manager'
-      );
-
-  if (!role) {
-    throw new Error(
-      'Este dispositivo todavía no tiene un rol asignado.'
+      'Este dispositivo todavía no tiene un área asignada.'
     );
   }
 
   $('#auth-view').hidden = true;
-
   $('#app-shell').hidden = false;
 
   $('#user-name').textContent =
     profile.display_name ||
-    role.toUpperCase();
+    (role === 'cashier'
+      ? 'Caja'
+      : 'Cocina');
 
   $('#user-role').textContent =
     role.toUpperCase();
@@ -776,14 +636,9 @@ async function start() {
   const catalog =
     await store.loadCatalog();
 
-  products =
-    catalog.products;
-
-  categories =
-    catalog.categories;
-
-  payments =
-    catalog.payments;
+  products = catalog.products;
+  categories = catalog.categories;
+  payments = catalog.payments;
 
   renderCatalog();
   renderPayments();
@@ -792,42 +647,147 @@ async function start() {
   await refresh();
 
   await store.subscribeToOrders();
+
+  $('#sync-status span').textContent =
+    'En tiempo real';
+}
+
+async function enterArea(selectedRole) {
+
+  const errorBox =
+    $('#auth-error');
+
+  errorBox.textContent = '';
+
+  const buttons =
+    document.querySelectorAll('.role-button');
+
+  buttons.forEach(b =>
+    b.disabled = true
+  );
+
+  try {
+
+    /*
+     * Crear una sesión anónima.
+     */
+    const response =
+      await store.signInAnonymously();
+
+    session =
+      response.session;
+
+    /*
+     * Asignar el dispositivo al área elegida.
+     */
+    await store.claimDeviceRole(
+      selectedRole,
+      selectedRole === 'cashier'
+        ? 'Caja'
+        : 'Cocina'
+    );
+
+    /*
+     * Guardar la preferencia localmente.
+     */
+    localStorage.setItem(
+      'coco_loco_area',
+      selectedRole
+    );
+
+    await start();
+
+  } catch (error) {
+
+    console.error(error);
+
+    errorBox.textContent =
+      error.message ||
+      'No se pudo ingresar.';
+
+    try {
+      await store.signOut();
+    } catch {}
+
+  } finally {
+
+    buttons.forEach(b =>
+      b.disabled = false
+    );
+  }
 }
 
 async function handleSession(value) {
+
   session = value;
 
   if (!session) {
+
     role = undefined;
 
     await store?.unsubscribe();
 
     $('#app-shell').hidden = true;
-
     $('#auth-view').hidden = false;
 
     return;
   }
+
+  try {
+
+    await start();
+
+  } catch (error) {
+
+    console.error(error);
+
+    await store.signOut();
+
+    $('#auth-error').textContent =
+      error.message;
+  }
 }
 
+/* =========================
+   ACCESO CAJA / COCINA
+   ========================= */
+
 $('#enter-cashier').onclick =
-  () => enterAs('cashier');
+  () => enterArea('cashier');
 
 $('#enter-kitchen').onclick =
-  () => enterAs('kitchen');
+  () => enterArea('kitchen');
+
+/* =========================
+   CERRAR / CAMBIAR ÁREA
+   ========================= */
 
 $('#sign-out').onclick =
   async () => {
+
     try {
+
+      localStorage.removeItem(
+        'coco_loco_area'
+      );
+
       await store.signOut();
+
     } catch (error) {
+
       toast(error.message);
     }
   };
 
+/* =========================
+   CATÁLOGO
+   ========================= */
+
 $('#category-tabs').onclick =
   e => {
+
     if (e.target.dataset.category) {
+
       category =
         e.target.dataset.category;
 
@@ -840,22 +800,25 @@ $('#product-search').oninput =
 
 $('#product-list').onclick =
   e => {
+
     const button =
-      e.target.closest(
-        '.add-product'
-      );
+      e.target.closest('.add-product');
 
     if (button) {
       add(button.dataset.id);
     }
   };
 
+/* =========================
+   CARRITO
+   ========================= */
+
 $('#open-cart').onclick =
-  () =>
-    $('#cart-dialog').showModal();
+  () => $('#cart-dialog').showModal();
 
 $('#cart-items').onclick =
   e => {
+
     const button =
       e.target.closest('button');
 
@@ -863,25 +826,28 @@ $('#cart-items').onclick =
 
     const line =
       cart.find(
-        x =>
-          x.id ===
-          button.dataset.id
+        x => x.id === button.dataset.id
       );
 
     if (!line) return;
 
     if (
-      button.dataset.action ===
-      'more'
+      button.dataset.action === 'more'
     ) {
       line.quantity++;
+
     } else if (
-      --line.quantity === 0
+      button.dataset.action === 'less'
     ) {
-      cart =
-        cart.filter(
-          x => x !== line
-        );
+
+      line.quantity--;
+
+      if (line.quantity <= 0) {
+        cart =
+          cart.filter(
+            x => x !== line
+          );
+      }
     }
 
     renderCart();
@@ -898,32 +864,35 @@ $('#cart-form').onsubmit =
 
 $('#new-order').onclick =
   () => {
+
     if (
       cart.length &&
-      confirm(
-        '¿Vaciar el pedido actual?'
-      )
+      confirm('¿Vaciar el pedido actual?')
     ) {
       cart = [];
       renderCart();
     }
   };
 
+/* =========================
+   COCINA
+   ========================= */
+
 $('#refresh-kitchen').onclick =
   refresh;
 
 $('#kitchen-list').onclick =
   async e => {
+
     const button =
-      e.target.closest(
-        '[data-order]'
-      );
+      e.target.closest('[data-order]');
 
     if (!button) return;
 
     button.disabled = true;
 
     try {
+
       await store.updateOrderStatus(
         button.dataset.order,
         button.dataset.next
@@ -938,70 +907,146 @@ $('#kitchen-list').onclick =
       );
 
     } finally {
+
       button.disabled = false;
     }
   };
 
+/* =========================
+   HISTORIAL
+   ========================= */
+
 $('#history-filter').onclick =
   e => {
-    if (e.target.dataset.status) {
+
+    if (
+      e.target.dataset.status
+    ) {
 
       history =
         e.target.dataset.status;
 
       document
         .querySelectorAll('.filter')
-        .forEach(
-          x =>
-            x.classList.toggle(
-              'is-selected',
-              x === e.target
-            )
+        .forEach(x =>
+          x.classList.toggle(
+            'is-selected',
+            x === e.target
+          )
         );
 
       renderHistory();
     }
   };
 
+/* =========================
+   NAVEGACIÓN
+   ========================= */
+
 document
   .querySelectorAll('.nav-item')
-  .forEach(
-    button =>
-      (button.onclick = () =>
-        view(
-          button.dataset.view
-        ))
-  );
+  .forEach(button => {
 
-try {
+    button.onclick =
+      () => view(
+        button.dataset.view
+      );
+  });
 
-  store =
-    await createStore({
-      onOrdersChange: refresh,
-      onAuthChange:
-        handleSession
-    });
+/* =========================
+   CIERRE DE CAJA
+   ========================= */
 
-  $('#sync-status span').textContent =
-    store.mode;
+$('#close-cash').onclick =
+  async () => {
 
-  const {
-    session: initial
-  } =
-    await store.getSession();
+    if (
+      !confirm(
+        '¿Confirmar el cierre de caja de hoy?'
+      )
+    ) {
+      return;
+    }
 
-  await handleSession(initial);
+    const button =
+      $('#close-cash');
 
-} catch (error) {
+    button.disabled = true;
 
-  console.error(error);
+    try {
 
-  const errorBox =
-    $('#role-error') ||
-    $('#auth-error');
+      await store.closeCash();
 
-  if (errorBox) {
-    errorBox.textContent =
-      error.message;
+      toast(
+        'Caja cerrada correctamente.'
+      );
+
+      await refresh();
+
+    } catch (error) {
+
+      toast(
+        `No se pudo cerrar caja: ${error.message}`
+      );
+
+    } finally {
+
+      button.disabled = false;
+    }
+  };
+
+/* =========================
+   INICIO
+   ========================= */
+
+(async () => {
+
+  try {
+
+    store =
+      await createStore({
+        onOrdersChange: refresh,
+        onAuthChange: handleSession
+      });
+
+    $('#sync-status span').textContent =
+      store.mode;
+
+    const {
+      session: initial
+    } =
+      await store.getSession();
+
+    /*
+     * Si ya existe una sesión anónima
+     * en este dispositivo, intentamos
+     * recuperar automáticamente su área.
+     */
+    if (initial) {
+
+      session = initial;
+
+      try {
+
+        await start();
+
+      } catch {
+
+        await store.signOut();
+
+        $('#auth-view').hidden = false;
+        $('#app-shell').hidden = true;
+      }
+
+    }
+
+  } catch (error) {
+
+    console.error(error);
+
+    $('#auth-error').textContent =
+      error.message ||
+      'No se pudo iniciar la aplicación.';
   }
-}
+
+})();

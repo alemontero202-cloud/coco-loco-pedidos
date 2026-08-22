@@ -1,680 +1,232 @@
 <!doctype html>
 <html lang="es">
-
 <head>
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
-
-  <meta
-    name="theme-color"
-    content="#7d1d12"
-  >
-
-  <meta
-    name="description"
-    content="Sistema de pedidos de Anticuchería Coco Loco"
-  >
-
-  <link
-    rel="manifest"
-    href="manifest.webmanifest"
-  >
-
-  <link
-    rel="stylesheet"
-    href="styles.css"
-  >
-
-  <title>Coco Loco · Pedidos</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7d1d12">
+<meta name="description" content="Pedidos de Anticuchería Coco Loco">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css">
+<title>Coco Loco · Pedidos</title>
 </head>
 
 <body>
 
-  <!-- ==========================================
-       PANTALLA DE ENTRADA
-       ========================================== -->
+<section class="auth-view" id="auth-view">
+  <div class="auth-card">
+    <span class="brand__mark">CL</span>
 
-  <section
-    class="auth-view"
-    id="auth-view"
-  >
+    <p class="eyebrow">ANTICUCHERÍA</p>
+    <h1>COCO LOCO</h1>
 
-    <div class="auth-card">
+    <p class="muted auth-intro">
+      Selecciona el área desde la que vas a trabajar.
+    </p>
 
-      <span class="brand__mark">
-        CL
-      </span>
+    <div class="role-buttons">
+      <button class="role-button" id="enter-cashier" type="button">
+        <span class="role-icon">🧾</span>
+        <strong>CAJA</strong>
+        <small>Registrar pedidos y cobrar</small>
+      </button>
 
-      <p class="eyebrow">
-        ANTICUCHERÍA
-      </p>
-
-      <h1>
-        COCO LOCO
-      </h1>
-
-      <p class="muted">
-        Sistema de pedidos
-      </p>
-
-      <div class="role-buttons">
-
-        <button
-          class="primary-button role-button"
-          id="enter-cashier"
-          type="button"
-        >
-          <span class="role-icon">💰</span>
-
-          <span>
-            <strong>CAJA</strong>
-            <small>
-              Registrar pedidos y pagos
-            </small>
-          </span>
-
-          <b>→</b>
-        </button>
-
-        <button
-          class="primary-button role-button"
-          id="enter-kitchen"
-          type="button"
-        >
-          <span class="role-icon">♨</span>
-
-          <span>
-            <strong>COCINA</strong>
-            <small>
-              Ver y preparar pedidos
-            </small>
-          </span>
-
-          <b>→</b>
-        </button>
-
-      </div>
-
-      <p
-        class="auth-error"
-        id="role-error"
-        role="alert"
-      ></p>
-
-      <small>
-        Anticuchería Coco Loco
-      </small>
-
+      <button class="role-button" id="enter-kitchen" type="button">
+        <span class="role-icon">🔥</span>
+        <strong>COCINA</strong>
+        <small>Ver y preparar pedidos</small>
+      </button>
     </div>
 
-  </section>
-
-
-  <!-- ==========================================
-       APLICACIÓN
-       ========================================== -->
-
-  <div
-    class="app-shell"
-    id="app-shell"
-    hidden
-  >
-
-    <!-- CABECERA -->
-
-    <header class="topbar">
-
-      <div class="brand">
-
-        <span class="brand__mark">
-          CL
-        </span>
-
-        <span>
-          ANTICUCHERÍA
-          <b>COCO LOCO</b>
-        </span>
-
-      </div>
-
-      <div class="header-session">
-
-        <span id="user-name"></span>
-
-        <small id="user-role"></small>
-
-        <button
-          id="sign-out"
-          title="Cambiar de área"
-        >
-          Salir
-        </button>
-
-      </div>
-
-      <div
-        class="sync-status"
-        id="sync-status"
-      >
-        <i></i>
-
-        <span>
-          Conectando…
-        </span>
-
-      </div>
-
-    </header>
-
-
-    <!-- ==========================================
-         CONTENIDO
-         ========================================== -->
-
-    <main>
-
-
-      <!-- ========================================
-           CAJA / NUEVO PEDIDO
-           ======================================== -->
-
-      <section
-        class="view is-active"
-        id="order-view"
-        data-requires="cashier"
-      >
-
-        <div class="view-heading">
-
-          <div>
-
-            <p class="eyebrow">
-              CAJA
-            </p>
-
-            <h1>
-              Nuevo pedido
-            </h1>
-
-          </div>
-
-          <button
-            class="icon-button"
-            id="new-order"
-            title="Vaciar pedido"
-          >
-            ↻
-          </button>
-
-        </div>
-
-
-        <!-- BUSCADOR -->
-
-        <label class="search">
-
-          <span>
-            ⌕
-          </span>
-
-          <input
-            id="product-search"
-            type="search"
-            placeholder="Buscar producto..."
-            autocomplete="off"
-          >
-
-        </label>
-
-
-        <!-- CATEGORÍAS -->
-
-        <div
-          class="category-tabs"
-          id="category-tabs"
-        ></div>
-
-
-        <!-- PRODUCTOS -->
-
-        <div
-          class="product-list"
-          id="product-list"
-        ></div>
-
-
-        <!-- PEDIDO ACTUAL -->
-
-        <section class="order-sheet">
-
-          <div class="order-sheet__top">
-
-            <div>
-
-              <span class="muted">
-                Pedido actual
-              </span>
-
-              <strong id="cart-count">
-                0 productos
-              </strong>
-
-            </div>
-
-            <strong id="cart-total">
-              S/ 0.00
-            </strong>
-
-          </div>
-
-          <button
-            id="open-cart"
-            class="primary-button"
-            disabled
-          >
-            Ver pedido
-            <span>→</span>
-          </button>
-
-        </section>
-
-      </section>
-
-
-      <!-- ========================================
-           COCINA
-           ======================================== -->
-
-      <section
-        class="view"
-        id="kitchen-view"
-        data-requires="kitchen"
-      >
-
-        <div class="view-heading">
-
-          <div>
-
-            <p class="eyebrow">
-              COCINA
-            </p>
-
-            <h1>
-              Pedidos en curso
-            </h1>
-
-          </div>
-
-          <button
-            class="icon-button"
-            id="refresh-kitchen"
-            title="Actualizar"
-          >
-            ↻
-          </button>
-
-        </div>
-
-
-        <div
-          class="kitchen-summary"
-          id="kitchen-summary"
-        ></div>
-
-
-        <div
-          class="kitchen-list"
-          id="kitchen-list"
-        ></div>
-
-      </section>
-
-
-      <!-- ========================================
-           HISTORIAL
-           ======================================== -->
-
-      <section
-        class="view"
-        id="history-view"
-        data-requires="cashier"
-      >
-
-        <div class="view-heading">
-
-          <div>
-
-            <p class="eyebrow">
-              REGISTRO
-            </p>
-
-            <h1>
-              Historial
-            </h1>
-
-          </div>
-
-        </div>
-
-
-        <div
-          class="filter-row"
-          id="history-filter"
-        >
-
-          <button
-            class="filter is-selected"
-            data-status="all"
-          >
-            Todos
-          </button>
-
-          <button
-            class="filter"
-            data-status="delivered"
-          >
-            Entregados
-          </button>
-
-          <button
-            class="filter"
-            data-status="pending"
-          >
-            Pendientes
-          </button>
-
-        </div>
-
-
-        <div
-          class="history-list"
-          id="history-list"
-        ></div>
-
-      </section>
-
-
-      <!-- ========================================
-           VENTAS
-           ======================================== -->
-
-      <section
-        class="view"
-        id="sales-view"
-        data-requires="cashier"
-      >
-
-        <div class="view-heading">
-
-          <div>
-
-            <p class="eyebrow">
-              CAJA
-            </p>
-
-            <h1>
-              Ventas de hoy
-            </h1>
-
-          </div>
-
-        </div>
-
-
-        <div class="sales-total">
-
-          <span>
-            Total cobrado
-          </span>
-
-          <strong id="sales-total">
-            S/ 0.00
-          </strong>
-
-          <small id="sales-count">
-            0 pedidos registrados
-          </small>
-
-        </div>
-
-
-        <div
-          class="sales-cards"
-          id="sales-cards"
-        ></div>
-
-
-        <div class="sales-products">
-
-          <h2>
-            Productos más pedidos
-          </h2>
-
-          <div id="top-products"></div>
-
-        </div>
-
-      </section>
-
-    </main>
-
-
-    <!-- ==========================================
-         NAVEGACIÓN
-         ========================================== -->
-
-    <nav class="bottom-nav">
-
-      <button
-        class="nav-item is-active"
-        data-view="order-view"
-        data-requires="cashier"
-      >
-        <span>⊞</span>
-        Pedido
-      </button>
-
-
-      <button
-        class="nav-item"
-        data-view="kitchen-view"
-        data-requires="kitchen"
-      >
-        <span>♨</span>
-        Cocina
-      </button>
-
-
-      <button
-        class="nav-item"
-        data-view="history-view"
-        data-requires="cashier"
-      >
-        <span>◷</span>
-        Historial
-      </button>
-
-
-      <button
-        class="nav-item"
-        data-view="sales-view"
-        data-requires="cashier"
-      >
-        <span>▥</span>
-        Ventas
-      </button>
-
-    </nav>
-
+    <p class="auth-error" id="auth-error" role="alert"></p>
+
+    <small class="auth-footer">
+      Sistema de pedidos · Coco Loco
+    </small>
+  </div>
+</section>
+
+<div class="app-shell" id="app-shell" hidden>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand__mark">CL</span>
+    <span>ANTICUCHERÍA <b>COCO LOCO</b></span>
   </div>
 
+  <div class="header-session">
+    <span id="user-name"></span>
+    <small id="user-role"></small>
+    <button id="sign-out" title="Cambiar de área">Cambiar</button>
+  </div>
 
-  <!-- ==========================================
-       VENTANA DEL PEDIDO
-       ========================================== -->
+  <div class="sync-status" id="sync-status">
+    <i></i>
+    <span>Conectando…</span>
+  </div>
+</header>
 
-  <dialog
-    class="cart-dialog"
-    id="cart-dialog"
-  >
+<main>
 
-    <form
-      method="dialog"
-      class="dialog-panel"
-      id="cart-form"
-    >
+<section class="view is-active" id="order-view" data-requires="cashier">
+  <div class="view-heading">
+    <div>
+      <p class="eyebrow">CAJA</p>
+      <h1>Nuevo pedido</h1>
+    </div>
+    <button class="icon-button" id="new-order" title="Vaciar pedido">↻</button>
+  </div>
 
-      <header class="dialog-header">
+  <label class="search">
+    <span>⌕</span>
+    <input id="product-search" type="search" placeholder="Buscar producto" autocomplete="off">
+  </label>
 
-        <div>
+  <div class="category-tabs" id="category-tabs"></div>
+  <div class="product-list" id="product-list"></div>
 
-          <p class="eyebrow">
-            PEDIDO
-          </p>
-
-          <h2>
-            Confirmar pedido
-          </h2>
-
-        </div>
-
-        <button
-          class="icon-button"
-          value="cancel"
-          type="submit"
-        >
-          ×
-        </button>
-
-      </header>
-
-
-      <!-- PRODUCTOS DEL CARRITO -->
-
-      <div
-        class="cart-items"
-        id="cart-items"
-      ></div>
-
-
-      <!-- MÉTODO DE PAGO -->
-
-      <label class="field">
-
-        Método de pago
-
-        <select
-          id="payment-method"
-        ></select>
-
-      </label>
-
-
-      <!-- EFECTIVO -->
-
-      <label
-        class="field"
-        id="cash-field"
-      >
-
-        Monto recibido
-
-        <input
-          id="cash-received"
-          type="number"
-          min="0"
-          inputmode="decimal"
-          step="0.10"
-          placeholder="S/ 0.00"
-        >
-
-      </label>
-
-
-      <!-- VUELTO -->
-
-      <div
-        class="change-row"
-        id="change-row"
-      >
-
-        <span>
-          Vuelto
-        </span>
-
-        <strong id="change-amount">
-          S/ 0.00
-        </strong>
-
+  <section class="order-sheet">
+    <div class="order-sheet__top">
+      <div>
+        <span class="muted">Pedido actual</span>
+        <strong id="cart-count">0 productos</strong>
       </div>
+      <strong id="cart-total">S/ 0.00</strong>
+    </div>
 
+    <button id="open-cart" class="primary-button" disabled>
+      Ver pedido <span>→</span>
+    </button>
+  </section>
+</section>
 
-      <!-- NOTA -->
+<section class="view" id="kitchen-view" data-requires="kitchen">
+  <div class="view-heading">
+    <div>
+      <p class="eyebrow">COCINA</p>
+      <h1>Pedidos en curso</h1>
+    </div>
+    <button class="icon-button" id="refresh-kitchen">↻</button>
+  </div>
 
-      <label class="field">
+  <div class="kitchen-summary" id="kitchen-summary"></div>
+  <div class="kitchen-list" id="kitchen-list"></div>
+</section>
 
-        Nota para cocina
+<section class="view" id="history-view" data-requires="cashier">
+  <div class="view-heading">
+    <div>
+      <p class="eyebrow">REGISTRO</p>
+      <h1>Historial</h1>
+    </div>
+  </div>
 
-        <input
-          id="order-note"
-          maxlength="120"
-          placeholder="Ej.: sin ají"
-        >
+  <div class="filter-row" id="history-filter">
+    <button class="filter is-selected" data-status="all">Todos</button>
+    <button class="filter" data-status="delivered">Entregados</button>
+    <button class="filter" data-status="pending">Pendientes</button>
+  </div>
 
-      </label>
+  <div class="history-list" id="history-list"></div>
+</section>
 
+<section class="view" id="sales-view" data-requires="cashier">
+  <div class="view-heading">
+    <div>
+      <p class="eyebrow">CAJA</p>
+      <h1>Ventas de hoy</h1>
+    </div>
+  </div>
 
-      <!-- TOTAL -->
+  <div class="sales-total">
+    <span>Total cobrado</span>
+    <strong id="sales-total">S/ 0.00</strong>
+    <small id="sales-count">0 pedidos registrados</small>
+  </div>
 
-      <div class="dialog-total">
+  <div class="sales-cards" id="sales-cards"></div>
 
-        <span>
-          Total
-        </span>
+  <div class="sales-products">
+    <h2>Productos más pedidos</h2>
+    <div id="top-products"></div>
+  </div>
 
-        <strong id="dialog-total">
-          S/ 0.00
-        </strong>
+  <button class="primary-button" id="close-cash" type="button">
+    Cerrar caja <span>→</span>
+  </button>
+</section>
 
-      </div>
+</main>
 
+<nav class="bottom-nav">
+  <button class="nav-item is-active" data-view="order-view" data-requires="cashier">
+    <span>⊞</span>Pedido
+  </button>
 
-      <!-- REGISTRAR -->
+  <button class="nav-item" data-view="kitchen-view" data-requires="kitchen">
+    <span>♨</span>Cocina
+  </button>
 
-      <button
-        class="primary-button"
-        id="place-order"
-        value="default"
-      >
-        Registrar pedido
-      </button>
+  <button class="nav-item" data-view="history-view" data-requires="cashier">
+    <span>◷</span>Historial
+  </button>
 
-    </form>
+  <button class="nav-item" data-view="sales-view" data-requires="cashier">
+    <span>▥</span>Ventas
+  </button>
+</nav>
 
-  </dialog>
+</div>
 
+<dialog class="cart-dialog" id="cart-dialog">
 
-  <!-- MENSAJES -->
+<form method="dialog" class="dialog-panel" id="cart-form">
 
-  <div
-    class="toast"
-    id="toast"
-    role="status"
-    aria-live="polite"
-  ></div>
+<header class="dialog-header">
+  <div>
+    <p class="eyebrow">PEDIDO</p>
+    <h2>Confirmar pedido</h2>
+  </div>
 
+  <button class="icon-button" value="cancel">×</button>
+</header>
 
-  <!-- APLICACIÓN -->
+<div class="cart-items" id="cart-items"></div>
 
-  <script
-    type="module"
-    src="app.js"
-  ></script>
+<label class="field">
+  Método de pago
+  <select id="payment-method"></select>
+</label>
+
+<label class="field" id="cash-field">
+  Monto recibido
+  <input id="cash-received" type="number" min="0" inputmode="decimal" step="0.10" placeholder="S/ 0.00">
+</label>
+
+<div class="change-row" id="change-row">
+  <span>Vuelto</span>
+  <strong id="change-amount">S/ 0.00</strong>
+</div>
+
+<label class="field">
+  Nota para cocina
+  <input id="order-note" maxlength="120" placeholder="Ej.: sin ají">
+</label>
+
+<div class="dialog-total">
+  <span>Total</span>
+  <strong id="dialog-total">S/ 0.00</strong>
+</div>
+
+<button class="primary-button" id="place-order" value="default">
+  Registrar pedido
+</button>
+
+</form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="app.js"></script>
 
 </body>
-
 </html>

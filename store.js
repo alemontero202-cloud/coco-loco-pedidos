@@ -23,7 +23,7 @@ async function getClient() {
   }
 
   const { createClient } = await import(
-    'https://esm.sh/@supabase/supabase-js@2'
+    https://esm.sh/@supabase/supabase-js@2
   );
 
   client = createClient(config.url, config.publishableKey, {
