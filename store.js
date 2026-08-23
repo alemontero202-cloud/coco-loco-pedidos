@@ -148,19 +148,22 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
       result(supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName }))
     ),
 
+    getIdentity: async () => callWithFreshSession(() =>
+      result(supabase.rpc('staff_get_identity'))
+    ),
+
     getRoles: async () => callWithFreshSession(async () => {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-      const userId = sessionData.session?.user?.id;
-      if (!userId) return [];
-      return result(await supabase.from('user_roles').select('role').eq('user_id', userId).eq('active', true));
+      const identity = result(await supabase.rpc('staff_get_identity'));
+      return identity?.role ? [{ role: identity.role }] : [];
     }),
 
     getProfile: async (id) => {
       if (!id) return null;
-      return callWithFreshSession(async () => result(
-        await supabase.from('profiles').select('display_name, active').eq('id', id).maybeSingle()
-      ));
+      return callWithFreshSession(async () => {
+        const identity = result(await supabase.rpc('staff_get_identity'));
+        if (!identity || identity.user_id !== id) return null;
+        return { display_name: identity.display_name, active: identity.active };
+      });
     },
 
     loadCatalog: async () => callWithFreshSession(async () => {
