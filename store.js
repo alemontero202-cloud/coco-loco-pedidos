@@ -41,6 +41,11 @@ async function getClient() {
   return client;
 }
 const result = ({ data, error }) => { if (error) throw error; return data; };
+const normalizeIdentity = value => {
+  const identity = Array.isArray(value) ? value[0] : value;
+  if (!identity || typeof identity !== 'object') return null;
+  return { ...identity, user_id: identity.user_id ?? identity.id, role: identity.role ?? identity.user_role, active: identity.active === true };
+};
 
 export async function createStore({ onOrdersChange, onAuthChange }) {
   const supabase = await getClient();
@@ -66,14 +71,15 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     signIn: async () => { suppressAuthEvents = true; try { return { session: await getFreshAnonymousSession(supabase) }; } finally { suppressAuthEvents = false; } },
     signOut: async () => { await resetLocalAuth(supabase); return null; },
     claimDeviceRole: async (role, displayName) => callWithFreshSession(() => result(supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName }))),
-    getIdentity: async () => callWithFreshSession(() => result(supabase.rpc('staff_get_identity'))),
+    getIdentity: async () => normalizeIdentity(await callWithFreshSession(() => result(supabase.rpc('staff_get_identity')))),
     getRoles: async () => {
       const identity = await callWithFreshSession(() => result(supabase.rpc('staff_get_identity')));
-      return identity?.role ? [{ role: identity.role }] : [];
+      const normalized = normalizeIdentity(identity);
+      return normalized?.role ? [{ role: normalized.role }] : [];
     },
     getProfile: async id => {
       if (!id) return null;
-      const identity = await callWithFreshSession(() => result(supabase.rpc('staff_get_identity')));
+      const identity = normalizeIdentity(await callWithFreshSession(() => result(supabase.rpc('staff_get_identity'))));
       if (!identity?.user_id || identity.user_id !== id) return null;
       return { display_name: identity.display_name, active: identity.active };
     },
