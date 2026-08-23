@@ -23,7 +23,7 @@ async function getClient() {
   }
 
   const { createClient } = await import(
-    https://esm.sh/@supabase/supabase-js@2
+    'https://esm.sh/@supabase/supabase-js@2'
   );
 
   client = createClient(config.url, config.publishableKey, {
@@ -55,19 +55,11 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     getSession: async () =>
       result(await supabase.auth.getSession()),
 
-    /*
-     * Entrada sin correo ni contraseña.
-     * Cada dispositivo recibe una identidad anónima de Supabase.
-     */
     signInAnonymously: async () => {
       const response = await supabase.auth.signInAnonymously();
       return result(response);
     },
 
-    /*
-     * Mantener compatibilidad con cualquier parte antigua
-     * del frontend que todavía llame signIn().
-     */
     signIn: async () => {
       return result(await supabase.auth.signInAnonymously());
     },
@@ -75,9 +67,6 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     signOut: async () =>
       result(await supabase.auth.signOut()),
 
-    /*
-     * CAJA o COCINA se asigna al dispositivo actual.
-     */
     claimDeviceRole: async (role, displayName) => {
       return result(
         await supabase.rpc('claim_device_role', {
@@ -104,9 +93,6 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
           .single()
       ),
 
-    /*
-     * Catálogo real desde Supabase.
-     */
     loadCatalog: async () => {
       const [products, categories, payments] = await Promise.all([
         supabase
@@ -139,9 +125,6 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
       };
     },
 
-    /*
-     * Pedidos.
-     */
     listOrders: async () =>
       result(
         await supabase
@@ -152,9 +135,6 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
           .order('created_at', { ascending: false })
       ),
 
-    /*
-     * Crear pedido mediante la RPC segura.
-     */
     createOrder: async ({
       items,
       paymentMethodCode,
@@ -176,9 +156,6 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
         })
       ),
 
-    /*
-     * Cambio de estado desde COCINA.
-     */
     updateOrderStatus: async (id, status) =>
       result(
         await supabase.rpc('update_order_status', {
@@ -187,9 +164,6 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
         })
       ),
 
-    /*
-     * Cierre de caja.
-     */
     closeCash: async (notes = '') =>
       result(
         await supabase.rpc('close_cash_register', {
@@ -200,9 +174,6 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
         })
       ),
 
-    /*
-     * Tiempo real.
-     */
     subscribeToOrders: async () => {
       if (ordersChannel) {
         await supabase.removeChannel(ordersChannel);
