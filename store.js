@@ -2,33 +2,36 @@ let client;
 let ordersChannel;
 let suppressAuthEvents = false;
 
+function clearPersistedAuthSession() {
+  try {
+    for (const storage of [window.localStorage, window.sessionStorage]) {
+      for (let i = storage.length - 1; i >= 0; i -= 1) {
+        const key = storage.key(i);
+        if (key && key.startsWith('sb-') && key.includes('-auth-token')) storage.removeItem(key);
+      }
+    }
+  } catch {
+    // Ignore storage access errors.
+  }
+}
+
 async function getClient() {
   if (client) return client;
 
   let config;
-
   try {
     config = (await import('./config.local.js')).default;
   } catch {
-    throw new Error(
-      'Falta config.local.js. Copia config.example.js y agrega la URL y clave publicable.'
-    );
+    throw new Error('Falta config.local.js. Copia config.example.js y agrega la URL y clave publicable.');
   }
-
   if (!config?.url || !config?.publishableKey || config.url.includes('TU-PROYECTO')) {
     throw new Error('La configuración de Supabase no es válida.');
   }
 
   const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-
   client = createClient(config.url, config.publishableKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   });
-
   return client;
 }
 
@@ -48,17 +51,22 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
   return {
     mode: 'Supabase · tiempo real',
 
-    getSession: async () => result(await supabase.auth.getSession()),
+    getSession: async () => {
+      const response = await supabase.auth.getSession();
+      if (response?.error?.code === 'PGRST303' || /JWT issued at future/i.test(response?.error?.message || '')) {
+        clearPersistedAuthSession();
+        return { data: { session: null }, error: null };
+      }
+      return result(response);
+    },
 
     signInAnonymously: async () => {
       suppressAuthEvents = true;
       try {
+        clearPersistedAuthSession();
         const response = result(await supabase.auth.signInAnonymously());
         const current = await supabase.auth.getSession();
-        return {
-          ...response,
-          session: current?.session || response?.session || null,
-        };
+        return { ...response, session: current?.session || response?.session || null };
       } finally {
         suppressAuthEvents = false;
       }
@@ -67,24 +75,29 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     signIn: async () => {
       suppressAuthEvents = true;
       try {
+        clearPersistedAuthSession();
         const response = result(await supabase.auth.signInAnonymously());
         const current = await supabase.auth.getSession();
-        return {
-          ...response,
-          session: current?.session || response?.session || null,
-        };
+        return { ...response, session: current?.session || response?.session || null };
       } finally {
         suppressAuthEvents = false;
       }
     },
 
-    signOut: async () => result(await supabase.auth.signOut()),
+    signOut: async () => {
+      try {
+        const response = await supabase.auth.signOut();
+        clearPersistedAuthSession();
+        return result(response);
+      } catch (error) {
+        clearPersistedAuthSession();
+        if (error?.code === 'PGRST303' || /JWT issued at future/i.test(error?.message || '')) return null;
+        throw error;
+      }
+    },
 
     claimDeviceRole: async (role, displayName) => result(
-      await supabase.rpc('claim_device_role', {
-        p_role: role,
-        p_display_name: displayName,
-      })
+      await supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName })
     ),
 
     getRoles: async () => {
@@ -92,24 +105,12 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
       if (sessionError) throw sessionError;
       const userId = sessionData.session?.user?.id;
       if (!userId) return [];
-
-      return result(
-        await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .eq('active', true)
-      );
+      return result(await supabase.from('user_roles').select('role').eq('user_id', userId).eq('active', true));
     },
 
     getProfile: async (id) => {
       if (!id) return null;
-      const response = await supabase
-        .from('profiles')
-        .select('display_name, active')
-        .eq('id', id)
-        .maybeSingle();
-      return result(response);
+      return result(await supabase.from('profiles').select('display_name, active').eq('id', id).maybeSingle());
     },
 
     loadCatalog: async () => {
@@ -117,50 +118,32 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
       return {
         products: (catalog?.products || []).map(p => ({
           ...p,
-          categories: p.category_code || p.category_name
-            ? { code: p.category_code, name: p.category_name }
-            : null,
+          categories: p.category_code || p.category_name ? { code: p.category_code, name: p.category_name } : null,
         })),
         categories: catalog?.categories || [],
         payments: catalog?.payments || [],
       };
     },
 
-    listOrders: async () => result(
-      await supabase
-        .from('orders')
-        .select('id, order_number, status, total, notes, payment_type, cash_received, change_due, created_at, updated_at, order_items(id, product_name, unit_price, quantity, line_total)')
-        .order('created_at', { ascending: false })
-    ),
+    listOrders: async () => result(await supabase.from('orders').select('id, order_number, status, total, notes, payment_type, cash_received, change_due, created_at, updated_at, order_items(id, product_name, unit_price, quantity, line_total)').order('created_at', { ascending: false })),
 
-    createOrder: async ({ items, paymentMethodCode, notes, cashReceived }) => result(
-      await supabase.rpc('create_order', {
-        p_items: items.map(({ id, quantity }) => ({ product_id: id, quantity })),
-        p_payment_method_code: paymentMethodCode,
-        p_notes: notes || null,
-        p_cash_received: paymentMethodCode === 'cash' ? Number(cashReceived || 0) : null,
-      })
-    ),
+    createOrder: async ({ items, paymentMethodCode, notes, cashReceived }) => result(await supabase.rpc('create_order', {
+      p_items: items.map(({ id, quantity }) => ({ product_id: id, quantity })),
+      p_payment_method_code: paymentMethodCode,
+      p_notes: notes || null,
+      p_cash_received: paymentMethodCode === 'cash' ? Number(cashReceived || 0) : null,
+    })),
 
-    updateOrderStatus: async (id, status) => result(
-      await supabase.rpc('update_order_status', {
-        p_order_id: id,
-        p_status_code: status,
-      })
-    ),
+    updateOrderStatus: async (id, status) => result(await supabase.rpc('update_order_status', { p_order_id: id, p_status_code: status })),
 
-    closeCash: async (notes = '') => result(
-      await supabase.rpc('close_cash_register', {
-        p_business_date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }),
-        p_notes: notes || null,
-      })
-    ),
+    closeCash: async (notes = '') => result(await supabase.rpc('close_cash_register', {
+      p_business_date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }),
+      p_notes: notes || null,
+    })),
 
     subscribeToOrders: async () => {
       if (ordersChannel) await supabase.removeChannel(ordersChannel);
-
-      ordersChannel = supabase
-        .channel('coco-loco-orders')
+      ordersChannel = supabase.channel('coco-loco-orders')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, onOrdersChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, onOrdersChange)
         .subscribe();
