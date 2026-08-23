@@ -113,30 +113,16 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     },
 
     loadCatalog: async () => {
-      const [products, categories, payments] = await Promise.all([
-        supabase
-          .from('products')
-          .select('id, name, price, description, category, category_id, categories(name, code)')
-          .eq('active', true)
-          .order('sort_order')
-          .order('name'),
-        supabase
-          .from('categories')
-          .select('id, name, code')
-          .eq('active', true)
-          .order('sort_order')
-          .order('name'),
-        supabase
-          .from('payment_methods')
-          .select('code, name')
-          .eq('active', true)
-          .order('sort_order'),
-      ]);
-
+      const catalog = result(await supabase.rpc('staff_load_catalog'));
       return {
-        products: result(products),
-        categories: result(categories),
-        payments: result(payments),
+        products: (catalog?.products || []).map(p => ({
+          ...p,
+          categories: p.category_code || p.category_name
+            ? { code: p.category_code, name: p.category_name }
+            : null,
+        })),
+        categories: catalog?.categories || [],
+        payments: catalog?.payments || [],
       };
     },
 
