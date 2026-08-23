@@ -15,6 +15,47 @@ function clearPersistedAuthSession() {
   }
 }
 
+function isJwtFutureError(error) {
+  return error?.code === 'PGRST303' || /JWT issued at future/i.test(error?.message || '');
+}
+
+function decodeJwtPayload(token) {
+  try {
+    const part = token?.split('.')?.[1];
+    if (!part) return null;
+    const normalized = part.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(decodeURIComponent(atob(normalized).split('').map(c => `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`).join('')));
+  } catch {
+    return null;
+  }
+}
+
+function tokenIsFromFuture(session) {
+  const iat = Number(decodeJwtPayload(session?.access_token)?.iat || 0);
+  return iat > Math.floor(Date.now() / 1000) + 30;
+}
+
+async function resetLocalAuth(supabase) {
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // A local sign-out must never require a valid JWT.
+  }
+  clearPersistedAuthSession();
+}
+
+async function getFreshAnonymousSession(supabase) {
+  await resetLocalAuth(supabase);
+  const response = await supabase.auth.signInAnonymously();
+  if (response.error) throw response.error;
+  const session = response.data?.session || null;
+  if (!session || tokenIsFromFuture(session)) {
+    await resetLocalAuth(supabase);
+    throw new Error('Supabase entregó un JWT con fecha futura. La sesión no puede utilizarse todavía.');
+  }
+  return session;
+}
+
 async function getClient() {
   if (client) return client;
 
@@ -48,25 +89,41 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     if (onAuthChange) onAuthChange(authSession);
   });
 
+  const callWithFreshSession = async (operation) => {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isJwtFutureError(error)) throw error;
+      const session = await getFreshAnonymousSession(supabase);
+      if (onAuthChange) onAuthChange(session);
+      return await operation();
+    }
+  };
+
   return {
     mode: 'Supabase · tiempo real',
 
     getSession: async () => {
       const response = await supabase.auth.getSession();
-      if (response?.error?.code === 'PGRST303' || /JWT issued at future/i.test(response?.error?.message || '')) {
-        clearPersistedAuthSession();
+      if (response?.error) {
+        if (isJwtFutureError(response.error)) {
+          await resetLocalAuth(supabase);
+          return { data: { session: null }, error: null };
+        }
+        throw response.error;
+      }
+      if (tokenIsFromFuture(response?.data?.session)) {
+        await resetLocalAuth(supabase);
         return { data: { session: null }, error: null };
       }
-      return result(response);
+      return response.data;
     },
 
     signInAnonymously: async () => {
       suppressAuthEvents = true;
       try {
-        clearPersistedAuthSession();
-        const response = result(await supabase.auth.signInAnonymously());
-        const current = await supabase.auth.getSession();
-        return { ...response, session: current?.session || response?.session || null };
+        const session = await getFreshAnonymousSession(supabase);
+        return { session };
       } finally {
         suppressAuthEvents = false;
       }
@@ -75,45 +132,38 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     signIn: async () => {
       suppressAuthEvents = true;
       try {
-        clearPersistedAuthSession();
-        const response = result(await supabase.auth.signInAnonymously());
-        const current = await supabase.auth.getSession();
-        return { ...response, session: current?.session || response?.session || null };
+        const session = await getFreshAnonymousSession(supabase);
+        return { session };
       } finally {
         suppressAuthEvents = false;
       }
     },
 
     signOut: async () => {
-      try {
-        const response = await supabase.auth.signOut();
-        clearPersistedAuthSession();
-        return result(response);
-      } catch (error) {
-        clearPersistedAuthSession();
-        if (error?.code === 'PGRST303' || /JWT issued at future/i.test(error?.message || '')) return null;
-        throw error;
-      }
+      await resetLocalAuth(supabase);
+      return null;
     },
 
-    claimDeviceRole: async (role, displayName) => result(
-      await supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName })
+    claimDeviceRole: async (role, displayName) => callWithFreshSession(() =>
+      result(supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName }))
     ),
 
-    getRoles: async () => {
+    getRoles: async () => callWithFreshSession(async () => {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       const userId = sessionData.session?.user?.id;
       if (!userId) return [];
       return result(await supabase.from('user_roles').select('role').eq('user_id', userId).eq('active', true));
-    },
+    }),
 
     getProfile: async (id) => {
       if (!id) return null;
-      return result(await supabase.from('profiles').select('display_name, active').eq('id', id).maybeSingle());
+      return callWithFreshSession(async () => result(
+        await supabase.from('profiles').select('display_name, active').eq('id', id).maybeSingle()
+      ));
     },
 
-    loadCatalog: async () => {
+    loadCatalog: async () => callWithFreshSession(async () => {
       const catalog = result(await supabase.rpc('staff_load_catalog'));
       return {
         products: (catalog?.products || []).map(p => ({
@@ -123,7 +173,7 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
         categories: catalog?.categories || [],
         payments: catalog?.payments || [],
       };
-    },
+    }),
 
     listOrders: async () => result(await supabase.from('orders').select('id, order_number, status, total, notes, payment_type, cash_received, change_due, created_at, updated_at, order_items(id, product_name, unit_price, quantity, line_total)').order('created_at', { ascending: false })),
 
