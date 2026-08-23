@@ -1,5 +1,6 @@
 let client;
 let ordersChannel;
+let suppressAuthEvents = false;
 
 async function getClient() {
   if (client) return client;
@@ -40,6 +41,7 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
   const supabase = await getClient();
 
   supabase.auth.onAuthStateChange((_event, authSession) => {
+    if (suppressAuthEvents) return;
     if (onAuthChange) onAuthChange(authSession);
   });
 
@@ -48,9 +50,33 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
 
     getSession: async () => result(await supabase.auth.getSession()),
 
-    signInAnonymously: async () => result(await supabase.auth.signInAnonymously()),
+    signInAnonymously: async () => {
+      suppressAuthEvents = true;
+      try {
+        const response = result(await supabase.auth.signInAnonymously());
+        const current = await supabase.auth.getSession();
+        return {
+          ...response,
+          session: current?.session || response?.session || null,
+        };
+      } finally {
+        suppressAuthEvents = false;
+      }
+    },
 
-    signIn: async () => result(await supabase.auth.signInAnonymously()),
+    signIn: async () => {
+      suppressAuthEvents = true;
+      try {
+        const response = result(await supabase.auth.signInAnonymously());
+        const current = await supabase.auth.getSession();
+        return {
+          ...response,
+          session: current?.session || response?.session || null,
+        };
+      } finally {
+        suppressAuthEvents = false;
+      }
+    },
 
     signOut: async () => result(await supabase.auth.signOut()),
 
