@@ -196,12 +196,14 @@ function applyRole() {
   else if (cashier()) view('order-view');
 }
 
-async function start() {
+async function start(sessionSnapshot = session) {
   if (starting) return;
-  if (!session?.user?.id) throw new Error('No hay una sesión válida. Selecciona Caja o Cocina para iniciar.');
+  const activeSession = sessionSnapshot;
+  const userId = activeSession?.user?.id;
+  if (!userId) throw new Error('No hay una sesión válida. Selecciona Caja o Cocina para iniciar.');
   starting = true;
   try {
-    const [roles, profile] = await Promise.all([store.getRoles(), store.getProfile(session.user.id)]);
+    const [roles, profile] = await Promise.all([store.getRoles(), store.getProfile(userId)]);
     role = priority.find(r => roles.map(x => x.role).includes(r));
     if (!profile?.active || !role) throw new Error('Este dispositivo todavía no tiene un área asignada.');
     $('#auth-view').hidden = true;
@@ -216,6 +218,7 @@ async function start() {
     renderCatalog();
     renderPayments();
     renderCart();
+    session = activeSession;
     await refresh();
     await store.subscribeToOrders();
     $('#sync-status span').textContent = 'En tiempo real';
@@ -232,11 +235,15 @@ async function enterArea(selectedRole) {
   assigningArea = true;
   try {
     const response = await store.signInAnonymously();
-    session = response?.session;
-    if (!session?.user?.id) throw new Error('Supabase no devolvió una sesión válida.');
+    const assignedSession = response?.session;
+    if (!assignedSession?.user?.id) throw new Error('Supabase no devolvió una sesión válida.');
+    session = assignedSession;
     await store.claimDeviceRole(selectedRole, selectedRole === 'cashier' ? 'Caja' : 'Cocina');
+    const { session: verifiedSession } = await store.getSession();
+    const finalSession = verifiedSession?.user?.id === assignedSession.user.id ? verifiedSession : assignedSession;
+    session = finalSession;
     localStorage.setItem('coco_loco_area', selectedRole);
-    await start();
+    await start(finalSession);
   } catch (error) {
     console.error(error);
     errorBox.textContent = error.message || 'No se pudo ingresar.';
@@ -248,21 +255,18 @@ async function enterArea(selectedRole) {
 }
 
 async function handleSession(value) {
-  // signInAnonymously() dispara onAuthStateChange antes de que
-  // enterArea() termine de ejecutar claim_device_role(). No debemos
-  // arrancar la aplicación en ese punto intermedio.
   if (assigningArea) return;
-
-  session = value;
-  if (!session?.user?.id) {
+  if (!value?.user?.id) {
+    session = null;
     role = undefined;
     await store?.unsubscribe();
     $('#app-shell').hidden = true;
     $('#auth-view').hidden = false;
     return;
   }
+  session = value;
   try {
-    await start();
+    await start(value);
   } catch (error) {
     console.error(error);
     role = undefined;
@@ -372,7 +376,7 @@ $('#close-cash').onclick = async () => {
     if (initial?.user?.id) {
       session = initial;
       try {
-        await start();
+        await start(initial);
       } catch (error) {
         console.error(error);
         role = undefined;
