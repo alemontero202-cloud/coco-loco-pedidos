@@ -70,7 +70,16 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     signInAnonymously: async () => { suppressAuthEvents = true; try { return { session: await getFreshAnonymousSession(supabase) }; } finally { suppressAuthEvents = false; } },
     signIn: async () => { suppressAuthEvents = true; try { return { session: await getFreshAnonymousSession(supabase) }; } finally { suppressAuthEvents = false; } },
     signOut: async () => { await resetLocalAuth(supabase); return null; },
-    claimDeviceRole: async (role, displayName) => callWithFreshSession(() => result(supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName }))),
+    claimDeviceRole: async (role, displayName) => {
+      return callWithFreshSession(async () => {
+        const data = result(await supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName }));
+        const identity = normalizeIdentity(await supabase.rpc('staff_get_identity').then(result));
+        if (!identity?.user_id || identity.role !== role || identity.active !== true) {
+          throw new Error(`Supabase no confirmó la asignación del área ${role}.`);
+        }
+        return data;
+      });
+    },
     getIdentity: async () => normalizeIdentity(await callWithFreshSession(() => result(supabase.rpc('staff_get_identity')))),
     getRoles: async () => {
       const identity = await callWithFreshSession(() => result(supabase.rpc('staff_get_identity')));
