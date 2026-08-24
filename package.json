@@ -1,0 +1,20 @@
+{
+  "name": "coco-loco-pedidos",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "http-server . -p 3000 -c-1",
+    "build:config": "node scripts/write-config.mjs",
+    "android:sync": "npm run build:config && npx cap sync android",
+    "android:open": "npm run android:sync && npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
+    "http-server": "^14.1.1"
+  }
+}
