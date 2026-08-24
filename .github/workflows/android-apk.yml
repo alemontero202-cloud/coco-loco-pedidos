@@ -5,7 +5,6 @@ on:
   push:
     branches: [main]
 
-# CI trigger after fixing npm cache dependency-lock issue.
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -42,6 +41,15 @@ jobs:
         run: |
           test -f config.local.js
           node -e "import('./config.local.js').then(m=>{if(!m.default?.url||!m.default?.publishableKey) process.exit(1); console.log('Supabase public config OK')})"
+
+      - name: Prepare web assets
+        run: |
+          rm -rf www
+          mkdir -p www
+          cp index.html styles.css app.js catalog.js store.js config.local.js manifest.webmanifest www/
+          test -f www/index.html
+          test -f www/app.js
+          test -f www/styles.css
 
       - name: Add Android platform
         run: npx cap add android
