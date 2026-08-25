@@ -24,52 +24,14 @@ function renderHistory() { const visible = orders.filter(o => history === 'all' 
 function renderSales() { const daily = orders.filter(o => today(o.created_at)), done = daily.filter(o => o.status === 'delivered'); $('#sales-total').textContent = money(done.reduce((s, o) => s + Number(o.total), 0)); $('#sales-count').textContent = `${daily.length} pedidos registrados`; $('#sales-cards').innerHTML = payments.map(p => `<div><span>${esc(p.name)}</span><b>${money(done.filter(o => o.payment_type === p.code).reduce((s, o) => s + Number(o.total), 0))}</b></div>`).join(''); const counts = {}; done.forEach(o => (o.order_items || []).forEach(x => { counts[x.product_name] = (counts[x.product_name] || 0) + x.quantity; })); $('#top-products').innerHTML = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,5).map(([name,quantity]) => `<p><span>${esc(name)}</span><b>${quantity}</b></p>`).join('') || '<p class="empty">Aún no hay ventas entregadas.</p>'; }
 async function refresh() { if (!session?.user?.id || !store) return; try { orders = await store.listOrders(); renderKitchen(); renderHistory(); renderSales(); } catch (error) { toast(`No se pudieron cargar pedidos: ${error.message}`); } }
 function toggleCash() { const payment = $('#payment-method')?.value, show = payment === 'cash' || payment === 'EFECTIVO'; $('#cash-field').hidden = !show; $('#change-row').hidden = !show; if (!show) { $('#cash-received').value = ''; renderChange(); } }
-async function place(event) { event.preventDefault(); const payment = $('#payment-method').value, received = Number($('#cash-received').value || 0); if ((payment === 'cash' || payment === 'EFECTIVO') && received < total()) { toast(`Faltan ${money(total() - received)} para completar el pago.`); return; } const button = $('#place-order'); button.disabled = true; try { const saved = await store.createOrder({ items: cart, paymentMethodCode: payment.toLowerCase() === 'efectivo' ? 'cash' : payment, notes: $('#order-note').value.trim(), cashReceived: received }); cart = []; $('#cart-dialog').close(); $('#cash-received').value = ''; $('#order-note').value = ''; renderCart(); await refresh(); toast(`Pedido #${String(saved.order_number).padStart(3, '0')} registrado.`); } catch (error) { toast(`No se pudo registrar el pedido: ${error.message}`); } finally { button.disabled = false; } }
+function showReceipt(saved, payment, received, items, notes) { const receipt = $('#receipt-dialog'); if (!receipt) return; const paymentName = payments.find(x => x.code === payment)?.name || payment; $('#receipt-number').textContent = `PEDIDO #${String(saved.order_number).padStart(3, '0')} · ${new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`; $('#receipt-lines').innerHTML = items.map(x => `<div class="receipt-line"><span>${x.quantity}× ${esc(x.name)}</span><strong>${money(Number(x.price) * x.quantity)}</strong></div>`).join(''); $('#receipt-total').textContent = money(saved.total); $('#receipt-payment').textContent = paymentName; const cash = payment === 'cash' || payment === 'EFECTIVO'; $('#receipt-received-row').hidden = !cash; $('#receipt-change-row').hidden = !cash; if (cash) { $('#receipt-received').textContent = money(received); $('#receipt-change').textContent = money(Math.max(received - Number(saved.total), 0)); } $('#receipt-note').textContent = notes ? `Nota: ${notes}` : ''; $('#receipt-note').hidden = !notes; receipt.showModal(); }
+async function place(event) { event.preventDefault(); const payment = $('#payment-method').value, received = Number($('#cash-received').value || 0), items = cart.map(x => ({ ...x })), notes = $('#order-note').value.trim(), orderTotal = total(); if ((payment === 'cash' || payment === 'EFECTIVO') && received < orderTotal) { toast(`Faltan ${money(orderTotal - received)} para completar el pago.`); return; } const button = $('#place-order'); button.disabled = true; try { const saved = await store.createOrder({ items, paymentMethodCode: payment.toLowerCase() === 'efectivo' ? 'cash' : payment, notes, cashReceived: received }); cart = []; $('#cart-dialog').close(); $('#cash-received').value = ''; $('#order-note').value = ''; renderCart(); await refresh(); showReceipt(saved, payment.toLowerCase() === 'efectivo' ? 'cash' : payment, received, items, notes); toast(`Pedido #${String(saved.order_number).padStart(3, '0')} registrado.`); } catch (error) { toast(`No se pudo registrar el pedido: ${error.message}`); } finally { button.disabled = false; } }
 function view(id) { document.querySelectorAll('.view').forEach(v => v.classList.toggle('is-active', v.id === id)); document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('is-active', n.dataset.view === id)); scrollTo(0,0); }
 function applyRole() { document.querySelectorAll('[data-requires="cashier"]').forEach(x => x.hidden = !cashier()); document.querySelectorAll('[data-requires="kitchen"]').forEach(x => x.hidden = !kitchen()); if (!cashier() && kitchen()) view('kitchen-view'); else if (cashier()) view('order-view'); }
 
-async function start(sessionSnapshot = session) {
-  if (starting) return;
-  const activeSession = sessionSnapshot || session;
-  if (!activeSession?.user?.id) throw new Error('No hay una sesión válida. Selecciona Caja o Cocina para iniciar.');
-  starting = true;
-  try {
-    // La identidad completa (perfil + rol) viene de una sola RPC segura.
-    // No dependemos de dos consultas RLS que puedan quedar desincronizadas.
-    const identity = await store.getIdentity();
-    role = identity?.role || undefined;
-    const sameUser = identity?.user_id === activeSession.user.id;
-    if (!sameUser || identity?.active !== true || !priority.includes(role)) {
-      throw new Error('Este dispositivo todavía no tiene un área asignada.');
-    }
-    session = activeSession;
-    $('#auth-view').hidden = true;
-    $('#app-shell').hidden = false;
-    $('#user-name').textContent = identity.display_name || (role === 'cashier' ? 'Caja' : 'Cocina');
-    $('#user-role').textContent = role.toUpperCase();
-    applyRole();
-    const catalog = await store.loadCatalog();
-    products = catalog.products; categories = catalog.categories; payments = catalog.payments;
-    renderCatalog(); renderPayments(); renderCart(); await refresh(); await store.subscribeToOrders(); $('#sync-status span').textContent = 'En tiempo real';
-  } finally { starting = false; }
-}
-
-async function enterArea(selectedRole) {
-  const errorBox = $('#auth-error'); errorBox.textContent = ''; const buttons = document.querySelectorAll('.role-button'); buttons.forEach(b => b.disabled = true); assigningArea = true;
-  try {
-    const response = await store.signInAnonymously(); const assignedSession = response?.session;
-    if (!assignedSession?.user?.id) throw new Error('Supabase no devolvió una sesión válida.');
-    session = assignedSession;
-    await store.claimDeviceRole(selectedRole, selectedRole === 'cashier' ? 'Caja' : 'Cocina');
-    const identity = await store.getIdentity();
-    if (identity?.user_id !== assignedSession.user.id || identity?.active !== true || identity?.role !== selectedRole) throw new Error('Supabase no confirmó la asignación de esta área.');
-    localStorage.setItem('coco_loco_area', selectedRole);
-    await start(assignedSession);
-  } catch (error) { console.error(error); errorBox.textContent = error.message || 'No se pudo ingresar.'; try { await store.signOut(); } catch {} } finally { assigningArea = false; buttons.forEach(b => b.disabled = false); }
-}
-
+async function start(sessionSnapshot = session) { if (starting) return; const activeSession = sessionSnapshot || session; if (!activeSession?.user?.id) throw new Error('No hay una sesión válida. Selecciona Caja o Cocina para iniciar.'); starting = true; try { const identity = await store.getIdentity(); role = identity?.role || undefined; const sameUser = identity?.user_id === activeSession.user.id; if (!sameUser || identity?.active !== true || !priority.includes(role)) throw new Error('Este dispositivo todavía no tiene un área asignada.'); session = activeSession; $('#auth-view').hidden = true; $('#app-shell').hidden = false; $('#user-name').textContent = identity.display_name || (role === 'cashier' ? 'Caja' : 'Cocina'); $('#user-role').textContent = role.toUpperCase(); applyRole(); const catalog = await store.loadCatalog(); products = catalog.products; categories = catalog.categories; payments = catalog.payments; renderCatalog(); renderPayments(); renderCart(); await refresh(); await store.subscribeToOrders(); $('#sync-status span').textContent = 'En tiempo real'; } finally { starting = false; } }
+async function enterArea(selectedRole) { const errorBox = $('#auth-error'); errorBox.textContent = ''; const buttons = document.querySelectorAll('.role-button'); buttons.forEach(b => b.disabled = true); assigningArea = true; try { const response = await store.signInAnonymously(); const assignedSession = response?.session; if (!assignedSession?.user?.id) throw new Error('Supabase no devolvió una sesión válida.'); session = assignedSession; await store.claimDeviceRole(selectedRole, selectedRole === 'cashier' ? 'Caja' : 'Cocina'); const identity = await store.getIdentity(); if (identity?.user_id !== assignedSession.user.id || identity?.active !== true || identity?.role !== selectedRole) throw new Error('Supabase no confirmó la asignación de esta área.'); localStorage.setItem('coco_loco_area', selectedRole); await start(assignedSession); } catch (error) { console.error(error); errorBox.textContent = error.message || 'No se pudo ingresar.'; try { await store.signOut(); } catch {} } finally { assigningArea = false; buttons.forEach(b => b.disabled = false); } }
 async function handleSession(value) { if (assigningArea) return; if (!value?.user?.id) { session = null; role = undefined; await store?.unsubscribe(); $('#app-shell').hidden = true; $('#auth-view').hidden = false; return; } session = value; try { await start(value); } catch (error) { console.error(error); role = undefined; await store.unsubscribe(); $('#app-shell').hidden = true; $('#auth-view').hidden = false; $('#auth-error').textContent = error.message === 'Este dispositivo todavía no tiene un área asignada.' ? 'Selecciona Caja o Cocina para asignar este dispositivo.' : error.message; } }
-
 $('#enter-cashier').onclick = () => enterArea('cashier');
 $('#enter-kitchen').onclick = () => enterArea('kitchen');
 $('#sign-out').onclick = async () => { try { localStorage.removeItem('coco_loco_area'); await store.signOut(); } catch (error) { toast(error.message); } };
@@ -82,11 +44,7 @@ $('#payment-method').onchange = toggleCash; $('#cash-received').oninput = render
 $('#new-order').onclick = () => { if (cart.length && confirm('¿Vaciar el pedido actual?')) { cart = []; renderCart(); } };
 $('#refresh-kitchen').onclick = refresh;
 $('#kitchen-list').onclick = async e => { const button = e.target.closest('[data-order]'); if (!button) return; button.disabled = true; try { await store.updateOrderStatus(button.dataset.order, button.dataset.next); await refresh(); } catch (error) { toast(`No se pudo actualizar: ${error.message}`); } finally { button.disabled = false; } };
+$('#close-receipt').onclick = () => $('#receipt-dialog').close();
+$('#print-receipt').onclick = () => window.print();
 
-(async () => {
-  try {
-    store = await createStore({ onOrdersChange: refresh, onAuthChange: handleSession });
-    const { session: current } = await store.getSession();
-    if (current?.user?.id) await handleSession(current);
-  } catch (error) { console.error(error); $('#auth-error').textContent = error.message; }
-})();
+(async () => { try { store = await createStore({ onOrdersChange: refresh, onAuthChange: handleSession }); const { session: current } = await store.getSession(); if (current?.user?.id) await handleSession(current); } catch (error) { console.error(error); $('#auth-error').textContent = error.message; } })();
