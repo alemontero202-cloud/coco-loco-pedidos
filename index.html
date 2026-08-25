@@ -9,163 +9,41 @@
 <link rel="stylesheet" href="styles.css">
 <title>Coco Loco · Pedidos</title>
 <style>
-  /* Identidad visual Coco Loco: vino + naranja + crema */
-  :root {
-    --cl-wine: #7d1d12;
-    --cl-wine-dark: #4d100b;
-    --cl-orange: #e95729;
-    --cl-cream: #fff1e5;
-    --cl-paper: #fff8f3;
-  }
-  .brand__mark {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(145deg, var(--cl-wine), var(--cl-wine-dark));
-    color: #fff;
-    box-shadow: inset 0 0 0 2px rgba(249,215,186,.35), 0 5px 14px rgba(77,16,11,.18);
-  }
-  .brand__mark::after {
-    content: "";
-    position: absolute;
-    width: 9px;
-    height: 9px;
-    right: 4px;
-    top: 4px;
-    border-radius: 50%;
-    background: var(--cl-orange);
-    box-shadow: 0 0 0 3px rgba(255,241,229,.22);
-  }
-  .topbar {
-    background: linear-gradient(100deg, var(--cl-wine-dark), var(--cl-wine) 58%, #8f2717);
-    box-shadow: 0 3px 18px rgba(77,16,11,.18);
-  }
-  .view-heading h1 { letter-spacing: -.35px; }
-  .search:focus-within {
-    border-color: var(--cl-orange);
-    box-shadow: 0 0 0 3px rgba(233,87,41,.12);
-  }
-  .category, .filter, .product, .order-card, .kitchen-summary span, .sales-cards div {
-    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-  }
-  .product:hover, .order-card:hover {
-    border-color: #dfbca8;
-    box-shadow: 0 8px 22px rgba(80,43,24,.07);
-    transform: translateY(-1px);
-  }
-  .product-icon {
-    background: linear-gradient(145deg, var(--cl-cream), #ffe4d2);
-  }
-  .add-product b {
-    background: var(--cl-orange);
-    color: #fff;
-    box-shadow: 0 4px 10px rgba(233,87,41,.18);
-  }
-  .primary-button {
-    background: linear-gradient(100deg, var(--cl-wine), #94291a);
-    box-shadow: 0 7px 16px rgba(125,29,18,.16);
-  }
-  .primary-button:hover { background: linear-gradient(100deg, var(--cl-wine-dark), var(--cl-wine)); }
-  .bottom-nav {
-    box-shadow: 0 -6px 20px rgba(80,43,24,.08);
-  }
-  .nav-item.is-active span { color: var(--cl-orange); }
-  .auth-card {
-    border: 1px solid rgba(234,215,202,.9);
-  }
-  .auth-card .brand__mark {
-    box-shadow: 0 10px 24px rgba(125,29,18,.25);
-  }
-  .role-button {
-    border: 1px solid rgba(249,215,186,.4);
-    background: linear-gradient(110deg, var(--cl-wine), #94291a);
-    box-shadow: 0 8px 18px rgba(125,29,18,.12);
-  }
-  .role-button:hover { transform: translateY(-1px); }
-  @media (min-width: 700px) {
-    body { padding: 18px 0; }
-    .app-shell { border-radius: 18px; overflow: hidden; box-shadow: 0 16px 45px rgba(80,43,24,.12); }
-    .topbar { border-radius: 18px 18px 0 0; }
-  }
+  :root { --cl-wine:#7d1d12; --cl-wine-dark:#4d100b; --cl-orange:#e95729; --cl-cream:#fff1e5; --cl-paper:#fff8f3; }
+  .brand__mark{position:relative;overflow:hidden;background:linear-gradient(145deg,var(--cl-wine),var(--cl-wine-dark));color:#fff;box-shadow:inset 0 0 0 2px rgba(249,215,186,.35),0 5px 14px rgba(77,16,11,.18)}
+  .brand__mark::after{content:"";position:absolute;width:9px;height:9px;right:4px;top:4px;border-radius:50%;background:var(--cl-orange);box-shadow:0 0 0 3px rgba(255,241,229,.22)}
+  .topbar{background:linear-gradient(100deg,var(--cl-wine-dark),var(--cl-wine) 58%,#8f2717);box-shadow:0 3px 18px rgba(77,16,11,.18)}
+  .view-heading h1{letter-spacing:-.35px}
+  .search:focus-within{border-color:var(--cl-orange);box-shadow:0 0 0 3px rgba(233,87,41,.12)}
+  .category,.filter,.product,.order-card,.kitchen-summary span,.sales-cards div{transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+  .product:hover,.order-card:hover{border-color:#dfbca8;box-shadow:0 8px 22px rgba(80,43,24,.07);transform:translateY(-1px)}
+  .product-icon{background:linear-gradient(145deg,var(--cl-cream),#ffe4d2)}
+  .add-product b{background:var(--cl-orange);color:#fff;box-shadow:0 4px 10px rgba(233,87,41,.18)}
+  .primary-button{background:linear-gradient(100deg,var(--cl-wine),#94291a);box-shadow:0 7px 16px rgba(125,29,18,.16)}
+  .primary-button:hover{background:linear-gradient(100deg,var(--cl-wine-dark),var(--cl-wine))}
+  .bottom-nav{box-shadow:0 -6px 20px rgba(80,43,24,.08)}
+  .nav-item.is-active span{color:var(--cl-orange)}
+  .auth-card{border:1px solid rgba(234,215,202,.9)}
+  .auth-card .brand__mark{box-shadow:0 10px 24px rgba(125,29,18,.25)}
+  .role-button{border:1px solid rgba(249,215,186,.4);background:linear-gradient(110deg,var(--cl-wine),#94291a);box-shadow:0 8px 18px rgba(125,29,18,.12)}
+  .role-button:hover{transform:translateY(-1px)}
+  @media (min-width:700px){body{padding:18px 0}.app-shell{border-radius:18px;overflow:hidden;box-shadow:0 16px 45px rgba(80,43,24,.12)}.topbar{border-radius:18px 18px 0 0}}
 </style>
 </head>
 <body>
-
-<section class="auth-view" id="auth-view">
-  <div class="auth-card">
-    <span class="brand__mark">CL</span>
-    <p class="eyebrow">ANTICUCHERÍA</p>
-    <h1>COCO LOCO</h1>
-    <p class="muted auth-intro">Selecciona el área desde la que vas a trabajar.</p>
-    <div class="role-buttons">
-      <button class="role-button" id="enter-cashier" type="button">
-        <span class="role-icon">🧾</span><span><strong>CAJA</strong><small>Registrar pedidos y cobrar</small></span><b>›</b>
-      </button>
-      <button class="role-button" id="enter-kitchen" type="button">
-        <span class="role-icon">🔥</span><span><strong>COCINA</strong><small>Ver y preparar pedidos</small></span><b>›</b>
-      </button>
-    </div>
-    <p class="auth-error" id="auth-error" role="alert"></p>
-    <small class="auth-footer">Sistema de pedidos · Coco Loco</small>
-  </div>
-</section>
-
+<section class="auth-view" id="auth-view"><div class="auth-card"><span class="brand__mark">CL</span><p class="eyebrow">ANTICUCHERÍA</p><h1>COCO LOCO</h1><p class="muted auth-intro">Selecciona el área desde la que vas a trabajar.</p><div class="role-buttons"><button class="role-button" id="enter-cashier" type="button"><span class="role-icon">🧾</span><span><strong>CAJA</strong><small>Registrar pedidos y cobrar</small></span><b>›</b></button><button class="role-button" id="enter-kitchen" type="button"><span class="role-icon">🔥</span><span><strong>COCINA</strong><small>Ver y preparar pedidos</small></span><b>›</b></button></div><p class="auth-error" id="auth-error" role="alert"></p><small class="auth-footer">Sistema de pedidos · Coco Loco</small></div></section>
 <div class="app-shell" id="app-shell" hidden>
-<header class="topbar">
-  <div class="brand"><span class="brand__mark">CL</span><span>ANTICUCHERÍA <b>COCO LOCO</b></span></div>
-  <div class="header-session"><span id="user-name"></span><small id="user-role"></small><button id="sign-out" title="Cambiar de área">Cambiar</button></div>
-  <div class="sync-status" id="sync-status"><i></i><span>Conectando…</span></div>
-</header>
-
+<header class="topbar"><div class="brand"><span class="brand__mark">CL</span><span>ANTICUCHERÍA <b>COCO LOCO</b></span></div><div class="header-session"><span id="user-name"></span><small id="user-role"></small><button id="sign-out" title="Cambiar de área">Cambiar</button></div><div class="sync-status" id="sync-status"><i></i><span>Conectando…</span></div></header>
 <main>
-<section class="view is-active" id="order-view" data-requires="cashier">
-  <div class="view-heading"><div><p class="eyebrow">CAJA</p><h1>Nuevo pedido</h1></div><button class="icon-button" id="new-order" title="Vaciar pedido">↻</button></div>
-  <label class="search"><span>⌕</span><input id="product-search" type="search" placeholder="Buscar producto" autocomplete="off"></label>
-  <div class="category-tabs" id="category-tabs"></div>
-  <div class="product-list" id="product-list"></div>
-  <section class="order-sheet"><div class="order-sheet__top"><div><span class="muted">Pedido actual</span><strong id="cart-count">0 productos</strong></div><strong id="cart-total">S/ 0.00</strong></div><button id="open-cart" class="primary-button" disabled>Ver pedido <span>→</span></button></section>
-</section>
-
-<section class="view" id="kitchen-view" data-requires="kitchen">
-  <div class="view-heading"><div><p class="eyebrow">COCINA</p><h1>Pedidos en curso</h1></div><button class="icon-button" id="refresh-kitchen">↻</button></div>
-  <div class="kitchen-summary" id="kitchen-summary"></div><div class="kitchen-list" id="kitchen-list"></div>
-</section>
-
-<section class="view" id="history-view" data-requires="cashier">
-  <div class="view-heading"><div><p class="eyebrow">REGISTRO</p><h1>Historial</h1></div></div>
-  <div class="filter-row" id="history-filter"><button class="filter is-selected" data-status="all">Todos</button><button class="filter" data-status="delivered">Entregados</button><button class="filter" data-status="pending">Pendientes</button></div>
-  <div class="history-list" id="history-list"></div>
-</section>
-
-<section class="view" id="sales-view" data-requires="cashier">
-  <div class="view-heading"><div><p class="eyebrow">CAJA</p><h1>Ventas de hoy</h1></div></div>
-  <div class="sales-total"><span>Total cobrado</span><strong id="sales-total">S/ 0.00</strong><small id="sales-count">0 pedidos registrados</small></div>
-  <div class="sales-cards" id="sales-cards"></div>
-  <div class="sales-products"><h2>Productos más pedidos</h2><div id="top-products"></div></div>
-  <button class="primary-button" id="close-cash" type="button">Cerrar caja <span>→</span></button>
-</section>
+<section class="view is-active" id="order-view" data-requires="cashier"><div class="view-heading"><div><p class="eyebrow">CAJA</p><h1>Nuevo pedido</h1></div><button class="icon-button" id="new-order" title="Vaciar pedido">↻</button></div><label class="search"><span>⌕</span><input id="product-search" type="search" placeholder="Buscar producto" autocomplete="off"></label><div class="category-tabs" id="category-tabs"></div><div class="product-list" id="product-list"></div><section class="order-sheet"><div class="order-sheet__top"><div><span class="muted">Pedido actual</span><strong id="cart-count">0 productos</strong></div><strong id="cart-total">S/ 0.00</strong></div><button id="open-cart" class="primary-button" disabled>Ver pedido <span>→</span></button></section></section>
+<section class="view" id="kitchen-view" data-requires="kitchen"><div class="view-heading"><div><p class="eyebrow">COCINA</p><h1>Pedidos en curso</h1></div><button class="icon-button" id="refresh-kitchen">↻</button></div><div class="kitchen-summary" id="kitchen-summary"></div><div class="kitchen-list" id="kitchen-list"></div></section>
+<section class="view" id="history-view" data-requires="cashier"><div class="view-heading"><div><p class="eyebrow">REGISTRO</p><h1>Historial</h1></div></div><div class="filter-row" id="history-filter"><button class="filter is-selected" data-status="all">Todos</button><button class="filter" data-status="delivered">Entregados</button><button class="filter" data-status="pending">Pendientes</button></div><div class="history-list" id="history-list"></div></section>
+<section class="view" id="sales-view" data-requires="cashier"><div class="view-heading"><div><p class="eyebrow">CAJA</p><h1>Ventas de hoy</h1></div></div><div class="sales-total"><span>Total cobrado</span><strong id="sales-total">S/ 0.00</strong><small id="sales-count">0 pedidos registrados</small></div><div class="sales-cards" id="sales-cards"></div><div class="sales-products"><h2>Productos más pedidos</h2><div id="top-products"></div></div><button class="primary-button" id="close-cash" type="button">Cerrar caja <span>→</span></button></section>
 </main>
-
-<nav class="bottom-nav">
-  <button class="nav-item is-active" data-view="order-view" data-requires="cashier"><span>⊞</span>Pedido</button>
-  <button class="nav-item" data-view="kitchen-view" data-requires="kitchen"><span>♨</span>Cocina</button>
-  <button class="nav-item" data-view="history-view" data-requires="cashier"><span>◷</span>Historial</button>
-  <button class="nav-item" data-view="sales-view" data-requires="cashier"><span>▥</span>Ventas</button>
-</nav>
+<nav class="bottom-nav"><button class="nav-item is-active" data-view="order-view" data-requires="cashier"><span>⊞</span>Pedido</button><button class="nav-item" data-view="kitchen-view" data-requires="kitchen"><span>♨</span>Cocina</button><button class="nav-item" data-view="history-view" data-requires="cashier"><span>◷</span>Historial</button><button class="nav-item" data-view="sales-view" data-requires="cashier"><span>▥</span>Ventas</button></nav>
 </div>
-
-<dialog class="cart-dialog" id="cart-dialog">
-<form method="dialog" class="dialog-panel" id="cart-form">
-<header class="dialog-header"><div><p class="eyebrow">PEDIDO</p><h2>Confirmar pedido</h2></div><button class="icon-button" value="cancel">×</button></header>
-<div class="cart-items" id="cart-items"></div>
-<label class="field">Método de pago<select id="payment-method"></select></label>
-<label class="field" id="cash-field">Monto recibido<input id="cash-received" type="number" min="0" inputmode="decimal" step="0.10" placeholder="S/ 0.00"></label>
-<div class="change-row" id="change-row"><span>Vuelto</span><strong id="change-amount">S/ 0.00</strong></div>
-<label class="field">Nota para cocina<input id="order-note" maxlength="120" placeholder="Ej.: sin ají"></label>
-<div class="dialog-total"><span>Total</span><strong id="dialog-total">S/ 0.00</strong></div>
-<button class="primary-button" id="place-order" value="default">Registrar pedido</button>
-</form>
-</dialog>
+<dialog class="cart-dialog" id="cart-dialog"><form method="dialog" class="dialog-panel" id="cart-form"><header class="dialog-header"><div><p class="eyebrow">PEDIDO</p><h2>Confirmar pedido</h2></div><button class="icon-button" value="cancel">×</button></header><div class="cart-items" id="cart-items"></div><label class="field">Método de pago<select id="payment-method"></select></label><label class="field" id="cash-field">Monto recibido<input id="cash-received" type="number" min="0" inputmode="decimal" step="0.10" placeholder="S/ 0.00"></label><div class="change-row" id="change-row"><span>Vuelto</span><strong id="change-amount">S/ 0.00</strong></div><label class="field">Nota para cocina<input id="order-note" maxlength="120" placeholder="Ej.: sin ají"></label><div class="dialog-total"><span>Total</span><strong id="dialog-total">S/ 0.00</strong></div><button class="primary-button" id="place-order" value="default">Registrar pedido</button></form></dialog>
+<dialog class="receipt-dialog" id="receipt-dialog"><article class="receipt-card"><header><span class="receipt-mark">CL</span><p>ANTICUCHERÍA</p><h2>COCO LOCO</h2><small>Comprobante interno de pedido</small></header><div class="receipt-number" id="receipt-number"></div><div class="receipt-lines" id="receipt-lines"></div><div class="receipt-divider"></div><div class="receipt-row"><span>Total</span><strong id="receipt-total">S/ 0.00</strong></div><div class="receipt-row"><span>Pago</span><span id="receipt-payment"></span></div><div class="receipt-row" id="receipt-received-row"><span>Recibido</span><span id="receipt-received"></span></div><div class="receipt-row" id="receipt-change-row"><span>Vuelto</span><strong id="receipt-change"></strong></div><p class="receipt-note" id="receipt-note"></p><footer>Gracias por tu pedido ❤️</footer><div class="receipt-actions"><button type="button" class="secondary-button" id="close-receipt">Cerrar</button><button type="button" class="primary-button" id="print-receipt">Imprimir <span>→</span></button></div></article></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="app.js"></script>
-</body>
-</html>
+</body></html>
