@@ -73,7 +73,9 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     claimDeviceRole: async (role, displayName) => {
       return callWithFreshSession(async () => {
         const data = result(await supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName }));
-        const identity = normalizeIdentity(await supabase.rpc('staff_get_identity').then(result));
+        // Supabase RPC responses are { data, error }; unwrap before normalizing.
+        // The previous code passed the raw response object, so role/active were always undefined.
+        const identity = normalizeIdentity(result(await supabase.rpc('staff_get_identity')));
         if (!identity?.user_id || identity.role !== role || identity.active !== true) {
           throw new Error(`Supabase no confirmó la asignación del área ${role}.`);
         }
