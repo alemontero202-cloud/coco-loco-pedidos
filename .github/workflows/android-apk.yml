@@ -64,6 +64,21 @@ jobs:
           java-version: '21'
           cache: gradle
 
+      - name: Prepare reproducible debug signing key
+        run: |
+          mkdir -p "$HOME/.android"
+          rm -f "$HOME/.android/debug.keystore"
+          keytool -genkeypair -v \
+            -keystore "$HOME/.android/debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android
+
       - name: Make Gradle executable
         working-directory: android
         run: chmod +x gradlew
@@ -74,12 +89,19 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace --warning-mode all
+        run: ./gradlew clean assembleDebug --no-daemon --stacktrace --warning-mode all
 
-      - name: Verify APK exists
+      - name: Verify APK integrity and metadata
         run: |
           test -f android/app/build/outputs/apk/debug/app-debug.apk
           ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+          unzip -t android/app/build/outputs/apk/debug/app-debug.apk >/dev/null
+          echo "APK ZIP integrity: OK"
+          if command -v apkanalyzer >/dev/null 2>&1; then
+            apkanalyzer manifest application-id android/app/build/outputs/apk/debug/app-debug.apk
+            apkanalyzer manifest min-sdk android/app/build/outputs/apk/debug/app-debug.apk
+            apkanalyzer manifest target-sdk android/app/build/outputs/apk/debug/app-debug.apk
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
