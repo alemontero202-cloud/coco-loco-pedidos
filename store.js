@@ -73,8 +73,6 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
     claimDeviceRole: async (role, displayName) => {
       return callWithFreshSession(async () => {
         const data = result(await supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName }));
-        // Supabase RPC responses are { data, error }; unwrap before normalizing.
-        // The previous code passed the raw response object, so role/active were always undefined.
         const identity = normalizeIdentity(result(await supabase.rpc('staff_get_identity')));
         if (!identity?.user_id || identity.role !== role || identity.active !== true) {
           throw new Error(`Supabase no confirmó la asignación del área ${role}.`);
@@ -98,11 +96,20 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
       const catalog = result(await supabase.rpc('staff_load_catalog'));
       return { products: (catalog?.products || []).map(p => ({ ...p, categories: p.category_code || p.category_name ? { code: p.category_code, name: p.category_name } : null })), categories: catalog?.categories || [], payments: catalog?.payments || [] };
     }),
-    listOrders: async () => result(await supabase.from('orders').select('id, order_number, status, total, notes, payment_type, cash_received, change_due, created_at, updated_at, order_items(id, product_name, unit_price, quantity, line_total)').order('created_at', { ascending: false })),
-    createOrder: async ({ items, paymentMethodCode, notes, cashReceived }) => result(await supabase.rpc('create_order', { p_items: items.map(({ id, quantity }) => ({ product_id: id, quantity })), p_payment_method_code: paymentMethodCode, p_notes: notes || null, p_cash_received: paymentMethodCode === 'cash' ? Number(cashReceived || 0) : null })),
-    updateOrderStatus: async (id, status) => result(await supabase.rpc('update_order_status', { p_order_id: id, p_status_code: status })),
-    closeCash: async (notes = '') => result(await supabase.rpc('close_cash_register', { p_business_date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }), p_notes: notes || null })),
-    subscribeToOrders: async () => { if (ordersChannel) await supabase.removeChannel(ordersChannel); ordersChannel = supabase.channel('coco-loco-orders').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, onOrdersChange).on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, onOrdersChange).subscribe(); },
+    listOrders: async () => callWithFreshSession(() => result(supabase.from('orders').select('id, order_number, status, total, notes, payment_type, cash_received, change_due, created_at, updated_at, order_items(id, product_name, unit_price, quantity, line_total)').order('created_at', { ascending: false }))),
+    createOrder: async ({ items, paymentMethodCode, notes, cashReceived }) => callWithFreshSession(() => result(supabase.rpc('create_order', { p_items: items.map(({ id, quantity }) => ({ product_id: id, quantity })), p_payment_method_code: paymentMethodCode, p_notes: notes || null, p_cash_received: paymentMethodCode === 'cash' ? Number(cashReceived || 0) : null }))),
+    updateOrderStatus: async (id, status) => callWithFreshSession(() => result(supabase.rpc('update_order_status', { p_order_id: id, p_status_code: status }))),
+    closeCash: async (notes = '') => callWithFreshSession(() => result(supabase.rpc('close_cash_register', { p_business_date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }), p_notes: notes || null }))),
+    subscribeToOrders: async () => {
+      if (ordersChannel) await supabase.removeChannel(ordersChannel);
+      ordersChannel = supabase.channel('coco-loco-orders')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, onOrdersChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, onOrdersChange)
+        .subscribe(status => {
+          if (status === 'SUBSCRIBED') return;
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') onOrdersChange?.({ realtimeError: status });
+        });
+    },
     unsubscribe: async () => { if (ordersChannel) { await supabase.removeChannel(ordersChannel); ordersChannel = undefined; } },
   };
 }
