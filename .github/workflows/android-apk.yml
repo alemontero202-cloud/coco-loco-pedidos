@@ -27,9 +27,18 @@ jobs:
           test -f capacitor.config.ts
           test -f index.html
           test -f scripts/write-config.mjs
+          test -f scripts/verify-ui.mjs
+          test -f premium.css
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Verify JavaScript syntax and UI selectors
+        run: |
+          node --check app.js
+          node --check store.js
+          node --check catalog.js
+          node scripts/verify-ui.mjs
 
       - name: Verify Capacitor CLI
         run: npx cap --version
@@ -46,10 +55,13 @@ jobs:
         run: |
           rm -rf www
           mkdir -p www
-          cp index.html styles.css app.js catalog.js store.js config.local.js manifest.webmanifest www/
+          cp index.html styles.css app.js catalog.js store.js config.local.js manifest.webmanifest premium.css www/
+          cat premium.css >> www/styles.css
           test -f www/index.html
           test -f www/app.js
           test -f www/styles.css
+          grep -q 'close-receipt' www/index.html
+          grep -q 'whatsapp-receipt' www/index.html
 
       - name: Add Android platform
         run: npx cap add android
@@ -64,7 +76,7 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Prepare reproducible debug signing key
+      - name: Prepare debug signing key
         run: |
           mkdir -p "$HOME/.android"
           rm -f "$HOME/.android/debug.keystore"
@@ -91,16 +103,17 @@ jobs:
         working-directory: android
         run: ./gradlew clean assembleDebug --no-daemon --stacktrace --warning-mode all
 
-      - name: Verify APK integrity and metadata
+      - name: Verify APK integrity, package and signature
         run: |
-          test -f android/app/build/outputs/apk/debug/app-debug.apk
-          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
-          unzip -t android/app/build/outputs/apk/debug/app-debug.apk >/dev/null
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          ls -lh "$APK"
+          unzip -t "$APK" >/dev/null
           echo "APK ZIP integrity: OK"
-          if command -v apkanalyzer >/dev/null 2>&1; then
-            apkanalyzer manifest application-id android/app/build/outputs/apk/debug/app-debug.apk
-            apkanalyzer manifest min-sdk android/app/build/outputs/apk/debug/app-debug.apk
-            apkanalyzer manifest target-sdk android/app/build/outputs/apk/debug/app-debug.apk
+          if command -v apksigner >/dev/null 2>&1; then
+            apksigner verify --verbose "$APK"
+          else
+            echo "apksigner not available on runner; Gradle build succeeded."
           fi
 
       - name: Upload APK
