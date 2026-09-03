@@ -24,6 +24,9 @@ function decodeJwtPayload(token) {
 function tokenIsFromFuture(session) { const iat = Number(decodeJwtPayload(session?.access_token)?.iat || 0); return iat > Math.floor(Date.now() / 1000) + 30; }
 async function resetLocalAuth(supabase) { try { await supabase.auth.signOut({ scope: 'local' }); } catch {} clearPersistedAuthSession(); }
 async function getFreshAnonymousSession(supabase) {
+  const existing = await supabase.auth.getSession();
+  if (!existing.error && existing.data?.session && !tokenIsFromFuture(existing.data.session)) return existing.data.session;
+  if (existing.error && !isJwtFutureError(existing.error)) throw existing.error;
   await resetLocalAuth(supabase);
   const response = await supabase.auth.signInAnonymously();
   if (response.error) throw response.error;
