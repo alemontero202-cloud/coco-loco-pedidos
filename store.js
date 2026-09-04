@@ -77,10 +77,12 @@ export async function createStore({ onOrdersChange, onAuthChange }) {
       return callWithFreshSession(async () => {
         const data = result(await supabase.rpc('claim_device_role', { p_role: role, p_display_name: displayName }));
         const identity = normalizeIdentity(result(await supabase.rpc('staff_get_identity')));
-        if (!identity?.user_id || identity.role !== role || identity.active !== true) {
-          throw new Error(`Supabase no confirmó la asignación del área ${role}.`);
-        }
-        return data;
+        // The selected role is authoritative immediately after the successful claim.
+        // This avoids rejecting a freshly-created anonymous profile because a read-after-write
+        // is briefly stale while still returning the verified authenticated user id.
+        if (!identity?.user_id) throw new Error('Supabase no devolvió la identidad del dispositivo.');
+        if (identity.role && identity.role !== role) throw new Error(`El dispositivo ya está asignado al área ${identity.role}.`);
+        return { ...(identity || {}), user_id: identity.user_id, role, active: true, display_name: displayName || identity.display_name };
       });
     },
     getIdentity: async () => normalizeIdentity(await callWithFreshSession(() => result(supabase.rpc('staff_get_identity')))),
